@@ -1,0 +1,26 @@
+body {
+  font-family: sans-serif;
+  text-align: center;
+  padding: 2em;
+}
+
+.hidden {
+  display: none;
+}
+
+#choices button,
+.confidence-btn,
+#start-btn {
+  font-size: 1.2em;
+  padding: 0.5em 1em;
+  margin: 0.5em;
+}
+
+#genre-selection {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1em;
+  max-width: 600px;
+  margin: auto;
+}
