@@ -1,0 +1,84 @@
+body {
+  font-family: sans-serif;
+  background: #f0f0f0;
+  color: #333;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  max-width: 600px;
+  margin: 50px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.screen {
+  display: none;
+}
+
+.screen.active {
+  display: block;
+}
+
+h1, h2 {
+  color: #007BFF;
+}
+
+.large-btn {
+  font-size: 1.2em;
+  padding: 12px 24px;
+  margin: 10px;
+}
+
+#choices button {
+  display: block;
+  margin: 10px auto;
+  padding: 15px 20px;
+  width: 80%;
+  font-size: 1.2em;
+  border: 1px solid #007BFF;
+  background: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#choices button:hover {
+  background: #007BFF;
+  color: white;
+}
+
+.confidence-btn {
+  margin: 5px;
+  padding: 10px 20px;
+  font-size: 1.1em;
+  border: none;
+  background: #28a745;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.confidence-btn:hover {
+  background: #218838;
+}
+
+#feedback {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.genres-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  margin: 10px 0;
+}
+
+#user-results {
+  text-align: left;
+  margin-top: 20px;
+}
