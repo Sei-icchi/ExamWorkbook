@@ -11,12 +11,14 @@
     <label>ユーザー名: <input type="text" id="username" required></label><br>
     <p>ジャンルを選択してください（複数可）:</p>
     <div id="genre-selection">
-      <label><input type="checkbox" value="歴史" checked>歴史</label>
-      <label><input type="checkbox" value="光・色彩" checked>光・色彩</label>
-      <label><input type="checkbox" value="カメラ・レンズ" checked>カメラ・レンズ</label>
-      <label><input type="checkbox" value="撮影・ライティング" checked>撮影・ライティング</label>
-      <label><input type="checkbox" value="画像処理" checked>画像処理</label>
-      <label><input type="checkbox" value="その他" checked>その他</label>
+      <div class="genre-grid">
+        <label><input type="checkbox" name="genre" value="歴史" checked>歴史</label>
+        <label><input type="checkbox" name="genre" value="光・色彩" checked>光・色彩</label>
+        <label><input type="checkbox" name="genre" value="カメラ・レンズ" checked>カメラ・レンズ</label>
+        <label><input type="checkbox" name="genre" value="撮影・ライティング" checked>撮影・ライティング</label>
+        <label><input type="checkbox" name="genre" value="画像処理" checked>画像処理</label>
+        <label><input type="checkbox" name="genre" value="その他" checked>その他</label>
+      </div>
     </div>
     <p>出題数を選択:</p>
     <select id="question-count">
