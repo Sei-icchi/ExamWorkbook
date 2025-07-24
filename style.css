@@ -30,3 +30,6 @@ body {
   gap: 10px;
   margin-bottom: 1em;
 }
+#question-text {
+  font-size: 1.2em;
+}
