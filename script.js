@@ -1,103 +1,85 @@
+// Firebase 初期化
 const firebaseConfig = {
   apiKey: "AIzaSyDcWdByC9LIILR19LlAWAor_VtY2y47kUk",
   authDomain: "exampractice-d2ed3.firebaseapp.com",
   databaseURL: "https://exampractice-d2ed3-default-rtdb.firebaseio.com",
-  projectId: "exampractice-d2ed3"
+  projectId: "exampractice-d2ed3",
+  storageBucket: "exampractice-d2ed3.firebasestorage.app",
+  messagingSenderId: "1074116776847",
+  appId: "1:1074116776847:web:b86f8817c4c15b31f571fa",
 };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-let questions = [];
-let currentIndex = 0;
-let correctCount = 0;
-let userAnswers = [];
-let currentUser = "";
+// ユーザー名取得
+let userName = localStorage.getItem("userName") || prompt("ユーザー名を入力してください");
+localStorage.setItem("userName", userName);
 
-document.getElementById("start-btn").addEventListener("click", startQuiz);
+let allQuestions = {};
+let usedIds = new Set();
 
+// 問題読み込み
+function loadQuestions() {
+  db.ref("questions").once("value", snapshot => {
+    allQuestions = snapshot.val() || {};
+    startQuiz();
+  });
+}
+
+// ユーザーの成績取得
+function getUserResults(callback) {
+  db.ref("users/" + userName).once("value", snapshot => {
+    const results = snapshot.val() || {};
+    callback(results);
+  });
+}
+
+// クイズ開始
 function startQuiz() {
-  currentUser = document.getElementById("username").value.trim();
-  if (!currentUser) {
-    alert("ユーザー名を入力してください");
-    return;
-  }
+  getUserResults(userResults => {
+    const unshown = Object.keys(allQuestions).filter(qid => !(qid in userResults));
+    let currentId;
 
-  const genres = [...document.querySelectorAll("#genre-selection input:checked")].map(cb => cb.value);
-  if (genres.length === 0) {
-    alert("ジャンルを選んでください");
-    return;
-  }
-
-  fetch(`${firebaseConfig.databaseURL}/questions.json`)
-    .then(res => res.json())
-    .then(data => {
-      questions = Object.values(data).filter(q => genres.includes(q.genre));
-      const count = document.getElementById("question-count").value;
-      if (count !== "all") {
-        questions = questions.slice(0, count === "mistakes" ? 5 : parseInt(count));
-      }
-
-      if (questions.length === 0) {
-        alert("選択したジャンルに問題がありません");
-        return;
-      }
-
-      questions = shuffle(questions);
-      document.getElementById("start-screen").classList.add("hidden");
-      document.getElementById("quiz-screen").classList.remove("hidden");
-      showQuestion();
-    });
-}
-
-function showQuestion() {
-  const q = questions[currentIndex];
-  document.getElementById("question-text").textContent = q.question;
-  const choices = shuffle([...q.choices]);
-  const choiceContainer = document.getElementById("choices");
-  choiceContainer.innerHTML = "";
-
-  choices.forEach(choice => {
-    const btn = document.createElement("button");
-    btn.textContent = choice;
-    btn.onclick = () => {
-      const result = document.getElementById("result");
-      result.textContent = (choice === q.answer) ? "正解！" : `不正解… 正解は「${q.answer}」`;
-      if (choice === q.answer) correctCount++;
-      userAnswers.push({ questionId: q.id, correct: choice === q.answer });
-      document.getElementById("confidence-container").classList.remove("hidden");
-    };
-    choiceContainer.appendChild(btn);
-  });
-}
-
-document.querySelectorAll(".confidence-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const confidence = btn.dataset.level;
-    const record = userAnswers[currentIndex];
-    record.confidence = confidence;
-
-    fetch(`${firebaseConfig.databaseURL}/users/${currentUser}/${record.questionId}.json`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(record)
-    });
-
-    currentIndex++;
-    document.getElementById("confidence-container").classList.add("hidden");
-    document.getElementById("result").textContent = "";
-
-    if (currentIndex < questions.length) {
-      showQuestion();
+    if (unshown.length > 0) {
+      currentId = unshown[Math.floor(Math.random() * unshown.length)];
     } else {
-      showResult();
+      const allIds = Object.keys(allQuestions);
+      currentId = allIds[Math.floor(Math.random() * allIds.length)];
     }
+
+    showQuestion(allQuestions[currentId]);
   });
-});
-
-function showResult() {
-  document.getElementById("quiz-screen").classList.add("hidden");
-  document.getElementById("result-screen").classList.remove("hidden");
-  document.getElementById("final-score").textContent = `${questions.length}問中 ${correctCount}問正解`;
 }
 
-function shuffle(array) {
-  return array.sort(() => Math.random() - 0.5);
+// 問題表示
+function showQuestion(q) {
+  const questionText = document.getElementById("question-text");
+  const choicesDiv = document.getElementById("choices");
+
+  questionText.innerText = q.question;
+  choicesDiv.innerHTML = "";
+
+  ["C1", "C2", "C3", "C4"].forEach(choiceKey => {
+    const btn = document.createElement("button");
+    btn.innerText = q[choiceKey];
+    btn.className = "choice-button";
+    btn.onclick = () => checkAnswer(q, q[choiceKey]);
+    choicesDiv.appendChild(btn);
+  });
 }
+
+// 答えを確認
+function checkAnswer(q, selected) {
+  const isCorrect = selected === q.answer;
+
+  // 結果保存
+  db.ref(`users/${userName}/${q.id}`).set({
+    correct: isCorrect,
+    selected: selected
+  });
+
+  alert(isCorrect ? "正解！" : `不正解！ 正解は: ${q.answer}`);
+  startQuiz();
+}
+
+window.onload = loadQuestions;
