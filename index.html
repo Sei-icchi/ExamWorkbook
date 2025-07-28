@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>クイズアプリ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- ユーザー名入力と設定画面 -->
+    <div id="start-screen" class="screen">
+      <h1>クイズアプリ</h1>
+      <label>ユーザー名: <input type="text" id="username"></label>
+      <div>
+        <p>ジャンルを選択（複数可）:</p>
+        <label><input type="checkbox" value="歴史">歴史</label>
+        <label><input type="checkbox" value="光・色彩">光・色彩</label>
+        <label><input type="checkbox" value="カメラ・レンズ">カメラ・レンズ</label>
+        <label><input type="checkbox" value="撮影・ライティング">撮影・ライティング</label>
+        <label><input type="checkbox" value="画像処理">画像処理</label>
+        <label><input type="checkbox" value="その他">その他</label>
+      </div>
+      <div>
+        <p>出題数:</p>
+        <select id="question-count">
+          <option value="5">5問</option>
+          <option value="10">10問</option>
+          <option value="all">全問</option>
+          <option value="wrong">間違い優先</option>
+        </select>
+      </div>
+      <button id="start-button">開始</button>
+    </div>
+
+    <!-- クイズ画面 -->
+    <div id="quiz-screen" class="screen hidden">
+      <div id="question-meta"></div>
+      <div id="question-text"></div>
+      <div id="choices"></div>
+      <div id="feedback" class="hidden"></div>
+      <div id="confidence-section" class="hidden">
+        <p>自信度:</p>
+        <button class="confidence" data-level="低">低</button>
+        <button class="confidence" data-level="中">中</button>
+        <button class="confidence" data-level="高">高</button>
+        <textarea id="memo" placeholder="メモを書く..."></textarea>
+        <button id="next-button">Next</button>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
