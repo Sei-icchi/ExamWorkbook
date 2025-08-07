@@ -58,6 +58,10 @@ button {
   margin: 5px;
   padding: 10px;
 }
+.confidence.selected {
+  background-color: #4a90e2;
+  color: white;
+}
 textarea {
   width: 90%;
   height: 80px;
