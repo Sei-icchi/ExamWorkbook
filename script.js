@@ -1,3 +1,4 @@
+
 const firebaseConfig = {
   apiKey: "AIzaSyDcWdByC9LIILR19LlAWAor_VtY2y47kUk",
   authDomain: "exampractice-d2ed3.firebaseapp.com",
@@ -96,31 +97,20 @@ function displayQuestion() {
   document.getElementById("feedback").classList.add("hidden");
   document.getElementById("confidence-container").classList.add("hidden");
 
-  // メモ表示（記録があれば）
   const memoInput = document.getElementById("memo");
   memoInput.value = questionHistory[q.id]?.memo || "";
 
-  // 自信度ボタン選択状態の復元
-  const savedConfidence = questionHistory[q.id]?.confidence;
-  if (savedConfidence) {
-    document.querySelectorAll(".confidence").forEach(btn => {
-      if (btn.dataset.level === savedConfidence) {
-        btn.classList.add("selected");
-      } else {
-        btn.classList.remove("selected");
-      }
-    });
+  const saved = questionHistory[q.id];
+  const savedConfidence = saved?.confidence;
+  const savedCount = saved?.count || 0;
 
-    // すでに自信度がある＝選択済み → NEXTを有効化
-    const nextBtn = document.getElementById("next-btn");
-    if (nextBtn) nextBtn.disabled = false;
-  } else {
-    // 自信度が未設定 → NEXT無効
-    const nextBtn = document.getElementById("next-btn");
-    if (nextBtn) nextBtn.disabled = true;
-  }
+  document.querySelectorAll(".confidence").forEach(btn => {
+    btn.classList.remove("selected");
+    if (savedCount > 0 && btn.dataset.level === savedConfidence) {
+      btn.classList.add("selected");
+    }
+  });
 
-  // コントロールボタン生成
   const existingControl = document.getElementById("control-buttons");
   if (existingControl) existingControl.remove();
 
@@ -136,7 +126,7 @@ function displayQuestion() {
   const nextBtn = document.createElement("button");
   nextBtn.id = "next-btn";
   nextBtn.textContent = "Next";
-  nextBtn.disabled = !savedConfidence; // ← 自信度未設定なら無効
+  nextBtn.disabled = !(savedConfidence && savedCount > 0);
   nextBtn.onclick = () => {
     questionHistory[q.id].memo = memoInput.value;
     saveResult();
@@ -155,7 +145,6 @@ function displayQuestion() {
 
   document.getElementById("confidence-container").appendChild(controlContainer);
 }
-
 
 function handleAnswer(selectedKey, button) {
   const isCorrect = selectedKey === currentQuestion.answer;
@@ -183,27 +172,11 @@ function handleAnswer(selectedKey, button) {
   document.querySelectorAll(".confidence").forEach(btn => {
     btn.onclick = () => {
       questionHistory[currentQuestion.id].confidence = btn.dataset.level;
+      document.querySelectorAll(".confidence").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      document.getElementById("next-btn").disabled = false;
     };
   });
-
-
-document.querySelectorAll(".confidence").forEach(btn => {
-  btn.onclick = () => {
-    questionHistory[currentQuestion.id].confidence = btn.dataset.level;
-
-    // すべての自信度ボタンの selected を外す
-    document.querySelectorAll(".confidence").forEach(b => b.classList.remove("selected"));
-    // 押したボタンだけ selected にする
-    btn.classList.add("selected");
-
-    // NEXTボタンを有効にする
-    document.getElementById("next-btn").disabled = false;
-  };
-});
-
-
-
-
 }
 
 function saveResult() {
@@ -224,8 +197,6 @@ function shuffle(array) {
   }
   return result;
 }
-
-
 
 function showScore() {
   const scoreScreen = document.getElementById("score-screen");
