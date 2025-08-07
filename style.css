@@ -62,3 +62,10 @@ textarea {
   height: 80px;
   font-size: 1em;
 }
+.genre-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  justify-items: start;
+  margin-top: 10px;
+}
