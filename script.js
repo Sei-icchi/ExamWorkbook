@@ -73,8 +73,13 @@ function displayQuestion() {
   const q = currentQuestion;
   document.getElementById("question-container").innerText = q.question;
 
-  const choices = ["c1", "c2", "c3", "c4"];
-  let displayChoices = (q.c1 === "◯") ? choices : shuffle(choices);
+  let choices = ["c1", "c2", "c3", "c4"];
+
+  if (q.c1 === "◯") {
+    choices = ["c1", "c2"];
+  }
+
+  const displayChoices = (q.c1 === "◯") ? choices : shuffle(choices);
 
   const container = document.getElementById("choices-container");
   container.innerHTML = "";
@@ -91,20 +96,32 @@ function displayQuestion() {
 
   document.getElementById("feedback").classList.add("hidden");
   document.getElementById("confidence-container").classList.add("hidden");
-
   document.getElementById("memo").value = questionHistory[q.id]?.memo || "";
 
-  if (!document.getElementById("exit-btn")) {
-    const exitBtn = document.createElement("button");
-    exitBtn.id = "exit-btn";
-    exitBtn.textContent = "Exit";
-    exitBtn.style.marginLeft = "20px";
-    exitBtn.onclick = () => {
-      document.getElementById("quiz-screen").classList.add("hidden");
-      document.getElementById("start-screen").classList.remove("hidden");
-    };
-    document.getElementById("confidence-container").appendChild(exitBtn);
-  }
+  const controlContainer = document.getElementById("control-buttons") || document.createElement("div");
+  controlContainer.id = "control-buttons";
+  controlContainer.innerHTML = "";
+
+  const nextBtn = document.createElement("button");
+  nextBtn.id = "next-btn";
+  nextBtn.textContent = "Next";
+  nextBtn.onclick = () => {
+    questionHistory[currentQuestion.id].memo = document.getElementById("memo").value;
+    saveResult();
+    showNextQuestion();
+  };
+  controlContainer.appendChild(nextBtn);
+
+  const exitBtn = document.createElement("button");
+  exitBtn.id = "exit-btn";
+  exitBtn.textContent = "Exit";
+  exitBtn.onclick = () => {
+    document.getElementById("quiz-screen").classList.add("hidden");
+    document.getElementById("start-screen").classList.remove("hidden");
+  };
+  controlContainer.appendChild(exitBtn);
+
+  document.getElementById("confidence-container").appendChild(controlContainer);
 }
 
 function handleAnswer(selectedKey, button) {
@@ -137,13 +154,6 @@ function handleAnswer(selectedKey, button) {
   });
 }
 
-document.getElementById("next-btn").addEventListener("click", () => {
-  if (!currentQuestion) return;
-  questionHistory[currentQuestion.id].memo = document.getElementById("memo").value;
-  saveResult();
-  showNextQuestion();
-});
-
 function saveResult() {
   fetch(RESULT_URL, {
     method: "PATCH",
@@ -157,7 +167,7 @@ function saveResult() {
 function shuffle(array) {
   const result = [...array];
   for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
