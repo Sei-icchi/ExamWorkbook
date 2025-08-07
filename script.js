@@ -73,14 +73,14 @@ function displayQuestion() {
   const q = currentQuestion;
   document.getElementById("question-container").innerText = q.question;
 
-  const choices = ["C1", "C2", "C3", "C4"];
-  let displayChoices = (q.C1 === "◯") ? choices : shuffle(choices);
+  const choices = ["c1", "c2", "c3", "c4"];
+  let displayChoices = (q.c1 === "◯") ? choices : shuffle(choices);
 
   const container = document.getElementById("choices-container");
   container.innerHTML = "";
 
   displayChoices.forEach(key => {
-    const text = q[key];  // ←選択肢の内容を取得
+    const text = q[key] || "[選択肢未設定]";
     const btn = document.createElement("button");
     btn.className = "choice-button";
     btn.dataset.key = key;
@@ -94,7 +94,6 @@ function displayQuestion() {
 
   document.getElementById("memo").value = questionHistory[q.id]?.memo || "";
 
-  // EXITボタンを追加（重複しないように）
   if (!document.getElementById("exit-btn")) {
     const exitBtn = document.createElement("button");
     exitBtn.id = "exit-btn";
