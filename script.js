@@ -103,7 +103,14 @@ function displayQuestion() {
   const controlContainer = document.createElement("div");
   controlContainer.id = "control-buttons";
 
-  const nextBtn = document.createElement("button");
+  
+  const scoreBtn = document.createElement("button");
+  scoreBtn.id = "score-btn";
+  scoreBtn.textContent = "成績";
+  scoreBtn.onclick = () => showScore();
+  controlContainer.appendChild(scoreBtn);
+
+const nextBtn = document.createElement("button");
   nextBtn.id = "next-btn";
   nextBtn.textContent = "Next";
   nextBtn.onclick = () => {
@@ -172,4 +179,44 @@ function shuffle(array) {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
+}
+
+
+
+function showScore() {
+  const scoreScreen = document.getElementById("score-screen");
+  const scoreTable = document.getElementById("score-table");
+  scoreTable.innerHTML = "";
+
+  const table = document.createElement("table");
+  const header = document.createElement("tr");
+  ["ID", "問題", "出題回数", "正解数", "自信度", "メモ"].forEach(text => {
+    const th = document.createElement("th");
+    th.innerText = text;
+    header.appendChild(th);
+  });
+  table.appendChild(header);
+
+  Object.keys(questionHistory).forEach(id => {
+    const q = questions[id];
+    const h = questionHistory[id];
+    if (!q || !h) return;
+
+    const tr = document.createElement("tr");
+    [id, q.question, h.count || 0, h.correct ? 1 : 0, h.confidence || "", h.memo || ""].forEach(val => {
+      const td = document.createElement("td");
+      td.innerText = val;
+      tr.appendChild(td);
+    });
+    table.appendChild(tr);
+  });
+
+  scoreTable.appendChild(table);
+  document.getElementById("quiz-screen").classList.add("hidden");
+  scoreScreen.classList.remove("hidden");
+}
+
+function backToQuiz() {
+  document.getElementById("score-screen").classList.add("hidden");
+  document.getElementById("quiz-screen").classList.remove("hidden");
 }
