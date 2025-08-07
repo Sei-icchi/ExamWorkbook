@@ -95,27 +95,50 @@ function displayQuestion() {
 
   document.getElementById("feedback").classList.add("hidden");
   document.getElementById("confidence-container").classList.add("hidden");
-  document.getElementById("memo").value = questionHistory[q.id]?.memo || "";
 
+  // メモ表示（記録があれば）
+  const memoInput = document.getElementById("memo");
+  memoInput.value = questionHistory[q.id]?.memo || "";
+
+  // 自信度ボタン選択状態の復元
+  const savedConfidence = questionHistory[q.id]?.confidence;
+  if (savedConfidence) {
+    document.querySelectorAll(".confidence").forEach(btn => {
+      if (btn.dataset.level === savedConfidence) {
+        btn.classList.add("selected");
+      } else {
+        btn.classList.remove("selected");
+      }
+    });
+
+    // すでに自信度がある＝選択済み → NEXTを有効化
+    const nextBtn = document.getElementById("next-btn");
+    if (nextBtn) nextBtn.disabled = false;
+  } else {
+    // 自信度が未設定 → NEXT無効
+    const nextBtn = document.getElementById("next-btn");
+    if (nextBtn) nextBtn.disabled = true;
+  }
+
+  // コントロールボタン生成
   const existingControl = document.getElementById("control-buttons");
   if (existingControl) existingControl.remove();
 
   const controlContainer = document.createElement("div");
   controlContainer.id = "control-buttons";
 
-  
   const scoreBtn = document.createElement("button");
   scoreBtn.id = "score-btn";
   scoreBtn.textContent = "成績";
   scoreBtn.onclick = () => showScore();
   controlContainer.appendChild(scoreBtn);
 
-const nextBtn = document.createElement("button");
+  const nextBtn = document.createElement("button");
   nextBtn.id = "next-btn";
   nextBtn.textContent = "Next";
-  nextBtn.disabled = true;
+  nextBtn.disabled = !savedConfidence; // ← 自信度未設定なら無効
   nextBtn.onclick = () => {
-    questionHistory[currentQuestion.id].memo = document.getElementById("memo").value;
+    questionHistory[q.id].memo = memoInput.value;
     saveResult();
     showNextQuestion();
   };
@@ -132,6 +155,7 @@ const nextBtn = document.createElement("button");
 
   document.getElementById("confidence-container").appendChild(controlContainer);
 }
+
 
 function handleAnswer(selectedKey, button) {
   const isCorrect = selectedKey === currentQuestion.answer;
