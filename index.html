@@ -3,52 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>クイズアプリ</title>
+  <title>4択クイズ</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="app">
-    <!-- ユーザー名入力と設定画面 -->
-    <div id="start-screen" class="screen">
-      <h1>クイズアプリ</h1>
-      <label>ユーザー名: <input type="text" id="username"></label>
-      <div>
-        <p>ジャンルを選択（複数可）:</p>
-        <label><input type="checkbox" value="歴史">歴史</label>
-        <label><input type="checkbox" value="光・色彩">光・色彩</label>
-        <label><input type="checkbox" value="カメラ・レンズ">カメラ・レンズ</label>
-        <label><input type="checkbox" value="撮影・ライティング">撮影・ライティング</label>
-        <label><input type="checkbox" value="画像処理">画像処理</label>
-        <label><input type="checkbox" value="その他">その他</label>
-      </div>
-      <div>
-        <p>出題数:</p>
-        <select id="question-count">
-          <option value="5">5問</option>
-          <option value="10">10問</option>
-          <option value="all">全問</option>
-          <option value="wrong">間違い優先</option>
-        </select>
-      </div>
-      <button id="start-button">開始</button>
+  <div id="start-screen" class="centered">
+    <h1>4択クイズ</h1>
+    <input type="text" id="username" placeholder="ユーザー名を入力" required>
+    <div>
+      <label>ジャンルを選択:</label><br>
+      <label><input type="checkbox" value="歴史">歴史</label>
+      <label><input type="checkbox" value="光・色彩">光・色彩</label>
+      <label><input type="checkbox" value="カメラ・レンズ">カメラ・レンズ</label>
+      <label><input type="checkbox" value="撮影・ライティング">撮影・ライティング</label>
+      <label><input type="checkbox" value="画像処理">画像処理</label>
+      <label><input type="checkbox" value="その他">その他</label>
     </div>
+    <div>
+      <label>出題方式:</label>
+      <select id="mode-select">
+        <option value="all">全ての問題を出題</option>
+        <option value="unanswered">未出題の問題を優先</option>
+        <option value="incorrect">不正解の問題を優先</option>
+      </select>
+    </div>
+    <button id="start-btn">スタート</button>
+  </div>
 
-    <!-- クイズ画面 -->
-    <div id="quiz-screen" class="screen hidden">
-      <div id="question-meta"></div>
-      <div id="question-text"></div>
-      <div id="choices"></div>
-      <div id="feedback" class="hidden"></div>
-      <div id="confidence-section" class="hidden">
-        <p>自信度:</p>
-        <button class="confidence" data-level="低">低</button>
-        <button class="confidence" data-level="中">中</button>
-        <button class="confidence" data-level="高">高</button>
-        <textarea id="memo" placeholder="メモを書く..."></textarea>
-        <button id="next-button">Next</button>
-      </div>
+  <div id="quiz-screen" class="hidden">
+    <div id="question-container"></div>
+    <div id="choices-container"></div>
+    <div id="feedback" class="hidden"></div>
+    <div id="confidence-container" class="hidden">
+      <label>自信度:</label>
+      <button class="confidence" data-level="低">低</button>
+      <button class="confidence" data-level="中">中</button>
+      <button class="confidence" data-level="高">高</button>
+      <textarea id="memo" placeholder="メモを入力..."></textarea>
+      <button id="next-btn">Next</button>
     </div>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>

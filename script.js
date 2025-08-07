@@ -5,148 +5,147 @@ const firebaseConfig = {
   projectId: "exampractice-d2ed3",
 };
 
-const dbUrl = firebaseConfig.databaseURL;
+const DB_URL = firebaseConfig.databaseURL + "/questions.json";
+const RESULT_URL = firebaseConfig.databaseURL + "/results.json";
 
-let user = "";
-let allQuestions = {};
-let selectedQuestions = [];
-let currentQuestionIndex = 0;
-let selectedGenres = [];
-let selectedCount = "5";
-let userProgress = {}; // 保存データ
+let questions = {};
+let currentQuestion = null;
+let currentUser = "";
+let currentGenre = [];
+let currentMode = "all";
+let questionHistory = {};
 
-const startButton = document.getElementById("start-button");
-const quizScreen = document.getElementById("quiz-screen");
-const startScreen = document.getElementById("start-screen");
-const questionText = document.getElementById("question-text");
-const choicesDiv = document.getElementById("choices");
-const feedbackDiv = document.getElementById("feedback");
-const confidenceSection = document.getElementById("confidence-section");
-const memoArea = document.getElementById("memo");
-const nextButton = document.getElementById("next-button");
+document.getElementById("start-btn").addEventListener("click", async () => {
+  const usernameInput = document.getElementById("username").value.trim();
+  if (!usernameInput) {
+    alert("ユーザー名を入力してください");
+    return;
+  }
+  currentUser = usernameInput;
 
-startButton.addEventListener("click", async () => {
-  user = document.getElementById("username").value.trim();
-  if (!user) return alert("ユーザー名を入力してください。");
+  const checkboxes = document.querySelectorAll("input[type=checkbox]:checked");
+  currentGenre = Array.from(checkboxes).map(cb => cb.value);
+  if (currentGenre.length === 0) {
+    alert("ジャンルを1つ以上選択してください");
+    return;
+  }
 
-  selectedGenres = Array.from(document.querySelectorAll("#start-screen input[type=checkbox]:checked")).map(e => e.value);
-  if (selectedGenres.length === 0) return alert("ジャンルを1つ以上選択してください。");
+  currentMode = document.getElementById("mode-select").value;
 
-  selectedCount = document.getElementById("question-count").value;
+  const res = await fetch(RESULT_URL);
+  const data = await res.json();
+  if (data && data[currentUser]) {
+    questionHistory = data[currentUser];
+  }
 
-  await fetchQuestions();
-  loadUserProgress();
-  selectQuestions();
-  showQuestion();
-  startScreen.classList.add("hidden");
-  quizScreen.classList.remove("hidden");
+  const qRes = await fetch(DB_URL);
+  questions = await qRes.json();
+
+  document.getElementById("start-screen").classList.add("hidden");
+  document.getElementById("quiz-screen").classList.remove("hidden");
+  showNextQuestion();
 });
 
-async function fetchQuestions() {
-  const res = await fetch(`${dbUrl}/questions.json`);
-  const data = await res.json();
-  allQuestions = data;
-}
+function showNextQuestion() {
+  let candidates = Object.values(questions).filter(q => currentGenre.includes(q.genre));
 
-function loadUserProgress() {
-  // fetch user data
-  fetch(`${dbUrl}/results/${user}.json`)
-    .then(res => res.json())
-    .then(data => {
-      if (data) userProgress = data;
+  if (currentMode === "unanswered") {
+    candidates.sort((a, b) => {
+      const aCount = questionHistory[a.id]?.count || 0;
+      const bCount = questionHistory[b.id]?.count || 0;
+      return aCount - bCount;
     });
+  } else if (currentMode === "incorrect") {
+    candidates = candidates.filter(q => questionHistory[q.id]?.correct === false);
+  }
+
+  if (candidates.length === 0) {
+    alert("対象の問題がありません。");
+    return;
+  }
+
+  currentQuestion = candidates[Math.floor(Math.random() * Math.min(5, candidates.length))];
+  displayQuestion();
 }
 
-function selectQuestions() {
-  const filtered = Object.values(allQuestions).filter(q => selectedGenres.includes(q.genre));
-  const unused = filtered.filter(q => !userProgress[q.id]);
-  const sorted = unused.length ? unused : filtered;
+function displayQuestion() {
+  const q = currentQuestion;
+  document.getElementById("question-container").innerText = q.question;
+  const choices = ["C1", "C2", "C3", "C4"];
+  let displayChoices = q.C1 === "◯" ? choices : shuffle(choices);
 
-  const count = selectedCount === "all" ? sorted.length : (selectedCount === "wrong" ? 999 : parseInt(selectedCount));
-  shuffleArray(sorted);
-  selectedQuestions = sorted.slice(0, count);
-  currentQuestionIndex = 0;
-}
+  const container = document.getElementById("choices-container");
+  container.innerHTML = "";
 
-function showQuestion() {
-  confidenceSection.classList.add("hidden");
-  feedbackDiv.classList.add("hidden");
-  feedbackDiv.textContent = "";
-
-  const q = selectedQuestions[currentQuestionIndex];
-  questionText.textContent = q.question;
-
-  const options = [q.C1, q.C2, q.C3, q.C4];
-  const answer = q.answer;
-
-  let isShuffle = q.C1 !== "◯";
-  const choices = isShuffle ? shuffleArray([...options]) : options;
-
-  choicesDiv.innerHTML = "";
-  choices.forEach(choice => {
+  displayChoices.forEach(key => {
     const btn = document.createElement("button");
-    btn.textContent = choice;
-    btn.onclick = () => handleAnswer(choice, answer, q);
-    choicesDiv.appendChild(btn);
+    btn.className = "choice-button";
+    btn.textContent = q[key];
+    btn.onclick = () => handleAnswer(key, btn);
+    container.appendChild(btn);
   });
+
+  document.getElementById("feedback").classList.add("hidden");
+  document.getElementById("confidence-container").classList.add("hidden");
+
+  if (questionHistory[q.id]) {
+    document.getElementById("memo").value = questionHistory[q.id].memo || "";
+  } else {
+    document.getElementById("memo").value = "";
+  }
 }
 
-function handleAnswer(choice, answer, q) {
-  const isCorrect = choice === answer;
-  feedbackDiv.textContent = isCorrect ? "◯ 正解！" : "✗ 不正解！";
-  feedbackDiv.className = isCorrect ? "correct" : "incorrect";
-  feedbackDiv.classList.remove("hidden");
-  confidenceSection.classList.remove("hidden");
-  memoArea.value = userProgress[q.id]?.memo || "";
-  document.querySelectorAll(".confidence").forEach(btn => {
-    btn.classList.remove("selected");
-    if (btn.dataset.level === userProgress[q.id]?.confidence) {
-      btn.classList.add("selected");
+function handleAnswer(selectedKey, button) {
+  const isCorrect = selectedKey === currentQuestion.answer;
+  const buttons = document.querySelectorAll(".choice-button");
+  buttons.forEach(btn => btn.disabled = true);
+
+  buttons.forEach(btn => {
+    if (btn.textContent === currentQuestion[currentQuestion.answer]) {
+      btn.classList.add("correct");
+    } else if (btn === button && !isCorrect) {
+      btn.classList.add("incorrect");
     }
   });
-  saveResult(q.id, isCorrect);
-}
 
-function saveResult(id, correct) {
-  if (!userProgress[id]) userProgress[id] = { correct: 0, wrong: 0 };
-  if (correct) userProgress[id].correct++;
-  else userProgress[id].wrong++;
-}
+  document.getElementById("feedback").classList.remove("hidden");
+  document.getElementById("feedback").innerText = isCorrect ? "正解！" : "不正解！";
+  document.getElementById("confidence-container").classList.remove("hidden");
 
-document.querySelectorAll(".confidence").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const level = btn.dataset.level;
-    const qid = selectedQuestions[currentQuestionIndex].id;
-    userProgress[qid].confidence = level;
-    document.querySelectorAll(".confidence").forEach(b => b.classList.remove("selected"));
-    btn.classList.add("selected");
-  });
-});
-
-nextButton.addEventListener("click", () => {
-  const qid = selectedQuestions[currentQuestionIndex].id;
-  userProgress[qid].memo = memoArea.value;
-
-  // Save to Firebase
-  fetch(`${dbUrl}/results/${user}/${qid}.json`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(userProgress[qid])
-  });
-
-  currentQuestionIndex++;
-  if (currentQuestionIndex < selectedQuestions.length) {
-    showQuestion();
-  } else {
-    alert("クイズ終了！");
-    location.reload();
+  if (!questionHistory[currentQuestion.id]) {
+    questionHistory[currentQuestion.id] = {};
   }
+  questionHistory[currentQuestion.id].correct = isCorrect;
+  questionHistory[currentQuestion.id].count = (questionHistory[currentQuestion.id].count || 0) + 1;
+
+  document.querySelectorAll(".confidence").forEach(btn => {
+    btn.onclick = () => {
+      questionHistory[currentQuestion.id].confidence = btn.dataset.level;
+    };
+  });
+}
+
+document.getElementById("next-btn").addEventListener("click", () => {
+  questionHistory[currentQuestion.id].memo = document.getElementById("memo").value;
+  saveResult();
+  showNextQuestion();
 });
 
-function shuffleArray(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
+function saveResult() {
+  fetch(RESULT_URL, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ [currentUser]: questionHistory }),
+  });
+}
+
+function shuffle(array) {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [result[i], result[j]] = [result[j], result[i]];
   }
-  return arr;
+  return result;
 }
