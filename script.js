@@ -64,7 +64,9 @@ function showNextQuestion() {
     return;
   }
 
-  currentQuestion = candidates[Math.floor(Math.random() * Math.min(5, candidates.length))];
+  // ランダムに1問選出
+  const randomIndex = Math.floor(Math.random() * candidates.length);
+  currentQuestion = candidates[randomIndex];
   displayQuestion();
 }
 
@@ -72,7 +74,7 @@ function displayQuestion() {
   const q = currentQuestion;
   document.getElementById("question-container").innerText = q.question;
   const choices = ["C1", "C2", "C3", "C4"];
-  let displayChoices = q.C1 === "◯" ? choices : shuffle(choices);
+  let displayChoices = (q.C1 === "◯") ? choices : shuffle(choices);
 
   const container = document.getElementById("choices-container");
   container.innerHTML = "";
@@ -80,7 +82,8 @@ function displayQuestion() {
   displayChoices.forEach(key => {
     const btn = document.createElement("button");
     btn.className = "choice-button";
-    btn.textContent = q[key];
+    btn.dataset.key = key;
+    btn.textContent = q[key]; // 修正点：ここで選択肢の内容を設定
     btn.onclick = () => handleAnswer(key, btn);
     container.appendChild(btn);
   });
@@ -88,10 +91,19 @@ function displayQuestion() {
   document.getElementById("feedback").classList.add("hidden");
   document.getElementById("confidence-container").classList.add("hidden");
 
-  if (questionHistory[q.id]) {
-    document.getElementById("memo").value = questionHistory[q.id].memo || "";
-  } else {
-    document.getElementById("memo").value = "";
+  document.getElementById("memo").value = questionHistory[q.id]?.memo || "";
+
+  // EXITボタン追加
+  if (!document.getElementById("exit-btn")) {
+    const exitBtn = document.createElement("button");
+    exitBtn.id = "exit-btn";
+    exitBtn.textContent = "Exit";
+    exitBtn.style.marginLeft = "20px";
+    exitBtn.onclick = () => {
+      document.getElementById("quiz-screen").classList.add("hidden");
+      document.getElementById("start-screen").classList.remove("hidden");
+    };
+    document.getElementById("confidence-container").appendChild(exitBtn);
   }
 }
 
@@ -101,7 +113,7 @@ function handleAnswer(selectedKey, button) {
   buttons.forEach(btn => btn.disabled = true);
 
   buttons.forEach(btn => {
-    if (btn.textContent === currentQuestion[currentQuestion.answer]) {
+    if (btn.dataset.key === currentQuestion.answer) {
       btn.classList.add("correct");
     } else if (btn === button && !isCorrect) {
       btn.classList.add("incorrect");
@@ -126,6 +138,7 @@ function handleAnswer(selectedKey, button) {
 }
 
 document.getElementById("next-btn").addEventListener("click", () => {
+  if (!currentQuestion) return;
   questionHistory[currentQuestion.id].memo = document.getElementById("memo").value;
   saveResult();
   showNextQuestion();
