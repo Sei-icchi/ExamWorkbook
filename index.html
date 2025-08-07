@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>4択クイズ</title>
+  <title>技能検定 問題集</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="start-screen" class="centered">
-    <h1>4択クイズ</h1>
-    <input type="text" id="username" placeholder="ユーザー名を入力" required>
+    <h1>技能検定 問題集</h1>
+    <input type="text" id="username" class="narrow-input" placeholder="ユーザー名を入力" required>
     <div>
       <label>ジャンルを選択:</label><br>
       <div class="genre-grid">
@@ -22,10 +22,10 @@
       </div>
     </div>
     <div>
-      <label>出題方式:</label>
-      <select id="mode-select">
+      <label>出題方式:</label><br>
+      <select id="mode-select" class="narrow-select">
         <option value="all">全ての問題を出題</option>
-        <option value="unanswered">未出題の問題を優先</option>
+        <option value="unanswered">出題回数の少ない問題を優先</option>
         <option value="incorrect">不正解の問題を優先</option>
       </select>
     </div>
@@ -42,7 +42,6 @@
       <button class="confidence" data-level="中">中</button>
       <button class="confidence" data-level="高">高</button>
       <textarea id="memo" placeholder="メモを入力..."></textarea>
-      <button id="next-btn">Next</button>
     </div>
   </div>
 

@@ -74,7 +74,6 @@ function displayQuestion() {
   document.getElementById("question-container").innerText = q.question;
 
   let choices = ["c1", "c2", "c3", "c4"];
-
   if (q.c1 === "◯") {
     choices = ["c1", "c2"];
   }
@@ -98,9 +97,11 @@ function displayQuestion() {
   document.getElementById("confidence-container").classList.add("hidden");
   document.getElementById("memo").value = questionHistory[q.id]?.memo || "";
 
-  const controlContainer = document.getElementById("control-buttons") || document.createElement("div");
+  const existingControl = document.getElementById("control-buttons");
+  if (existingControl) existingControl.remove();
+
+  const controlContainer = document.createElement("div");
   controlContainer.id = "control-buttons";
-  controlContainer.innerHTML = "";
 
   const nextBtn = document.createElement("button");
   nextBtn.id = "next-btn";
