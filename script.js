@@ -113,6 +113,7 @@ function displayQuestion() {
 const nextBtn = document.createElement("button");
   nextBtn.id = "next-btn";
   nextBtn.textContent = "Next";
+  nextBtn.disabled = true;
   nextBtn.onclick = () => {
     questionHistory[currentQuestion.id].memo = document.getElementById("memo").value;
     saveResult();
@@ -160,6 +161,25 @@ function handleAnswer(selectedKey, button) {
       questionHistory[currentQuestion.id].confidence = btn.dataset.level;
     };
   });
+
+
+document.querySelectorAll(".confidence").forEach(btn => {
+  btn.onclick = () => {
+    questionHistory[currentQuestion.id].confidence = btn.dataset.level;
+
+    // すべての自信度ボタンの selected を外す
+    document.querySelectorAll(".confidence").forEach(b => b.classList.remove("selected"));
+    // 押したボタンだけ selected にする
+    btn.classList.add("selected");
+
+    // NEXTボタンを有効にする
+    document.getElementById("next-btn").disabled = false;
+  };
+});
+
+
+
+
 }
 
 function saveResult() {
