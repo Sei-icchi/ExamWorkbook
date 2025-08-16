@@ -11,9 +11,10 @@ const RESULT_URL = firebaseConfig.databaseURL + "/results.json";
 
 // ====== アプリ状態 ======
 let questions = {};                // { "001": {...}, "002": {...}, ... }
-let orderedIds = [];               // 選択ジャンルで絞り込んだIDの昇順リスト
-let currentIdx = 0;                // orderedIds の現在位置
-let currentQuestion = null;        // 今表示している問題オブジェクト
+let orderedIds = [];               // 選択ジャンルで絞り込んだIDの昇順
+let currentIdx = 0;                // orderedIds の現在位置（円環的に使用）
+let firstRound = true;             // 1巡目：ID順で出題するフラグ
+let currentQuestion = null;
 let currentUser = "";
 let currentGenre = [];             // チェックボックスで選んだジャンル
 let questionHistory = {};          // { [id]: { count, correct, confidence, memo } }
@@ -53,7 +54,7 @@ document.getElementById("start-btn").addEventListener("click", async () => {
   orderedIds = Object.values(questions)
     .filter(q => currentGenre.includes(q.genre))
     .map(q => q.id)
-    .sort(); // "001","002"... 文字列昇順でOK
+    .sort(); // "001","002",... の文字列昇順でOK
 
   if (orderedIds.length === 0) {
     alert("選択したジャンルの問題がありません。");
@@ -61,6 +62,7 @@ document.getElementById("start-btn").addEventListener("click", async () => {
   }
 
   currentIdx = 0;
+  firstRound = true;
 
   // 画面切替
   document.getElementById("start-screen").classList.add("hidden");
@@ -68,19 +70,53 @@ document.getElementById("start-btn").addEventListener("click", async () => {
   showNextQuestion();
 });
 
-// ====== 次の問題（ID順に出題／一巡したら先頭に戻る） ======
+// ====== 次の問題（1巡目はID順、2巡目以降は“出題回数が少ない”問題優先） ======
 function showNextQuestion() {
   if (orderedIds.length === 0) {
     alert("対象の問題がありません。");
     return;
   }
 
-  if (currentIdx >= orderedIds.length) {
-    alert("全ての問題を出題しました。最初から再開します。");
-    currentIdx = 0;
+  let nextId = null;
+
+  if (firstRound) {
+    // 1巡目：ID昇順に出題
+    if (currentIdx >= orderedIds.length) {
+      alert("全ての問題を1巡しました。最初から再開します。");
+      currentIdx = 0;
+      firstRound = false; // ここからは “出題回数が少ない問題優先” に切り替え
+    } else {
+      nextId = orderedIds[currentIdx++];
+    }
   }
 
-  const id = orderedIds[currentIdx];
+  if (!firstRound && !nextId) {
+    // 2巡目以降：“最小出題回数”の問題を優先
+    const counts = orderedIds.map(id => (questionHistory[id]?.count || 0));
+    const minCount = Math.min(...counts);
+
+    // currentIdx を起点に円環的にスキャンして minCount の問題を選ぶ
+    const start = currentIdx % orderedIds.length;
+    for (let i = 0; i < orderedIds.length; i++) {
+      const idx = (start + i) % orderedIds.length;
+      const id = orderedIds[idx];
+      const c = questionHistory[id]?.count || 0;
+      if (c === minCount) {
+        nextId = id;
+        currentIdx = (idx + 1) % orderedIds.length; // 次回の起点を少し進める
+        break;
+      }
+    }
+
+    // 念のための保険
+    if (!nextId) {
+      nextId = orderedIds[start];
+      currentIdx = (start + 1) % orderedIds.length;
+    }
+  }
+
+  // 表示
+  const id = nextId ?? orderedIds[currentIdx++ % orderedIds.length];
   currentQuestion = questions[id];
   displayQuestion();
 }
@@ -90,8 +126,7 @@ function displayQuestion() {
   const q = currentQuestion;
   document.getElementById("question-container").innerText = q.question;
 
-  // 選択肢の並び：c1 が "◯" のときは [c1, c2] だけを順番表示
-  // それ以外は c1〜c4 をシャッフルして表示
+  // 選択肢：c1が"◯"なら c1,c2 のみ固定表示、そうでなければ c1〜c4 をシャッフル
   let choices = ["c1", "c2", "c3", "c4"];
   if (q.c1 === "◯") {
     choices = ["c1", "c2"];
@@ -101,7 +136,6 @@ function displayQuestion() {
 
   const container = document.getElementById("choices-container");
   container.innerHTML = "";
-
   choices.forEach(key => {
     const text = q[key] || "[選択肢未設定]";
     const btn = document.createElement("button");
@@ -134,20 +168,20 @@ function displayQuestion() {
   scoreBtn.onclick = () => showScore();
   controlContainer.appendChild(scoreBtn);
 
-  // NEXTボタン（初期は「回答＆自信度未選択」なので無効）
+  // NEXTボタン（初期は回答＆自信度未選択なので無効。過去に自信度があれば有効）
   const nextBtn = document.createElement("button");
   nextBtn.id = "next-btn";
   nextBtn.textContent = "Next";
-  nextBtn.disabled = true;
+  const saved = questionHistory[q.id];
+  const savedConfidence = saved?.confidence;
+  const savedCount = saved?.count || 0;
+  nextBtn.disabled = !(savedConfidence && savedCount > 0);
   nextBtn.onclick = () => {
-    // メモ保存
     const qid = q.id;
     if (!questionHistory[qid]) questionHistory[qid] = {};
     questionHistory[qid].memo = memoInput.value;
-    // サーバ保存＆インデックス進める
     saveResult();
-    currentIdx += 1;
-    showNextQuestion();
+    showNextQuestion(); // 次の出題選定は showNextQuestion() 側で
   };
   controlContainer.appendChild(nextBtn);
 
@@ -163,29 +197,20 @@ function displayQuestion() {
 
   document.getElementById("confidence-container").appendChild(controlContainer);
 
-  // 自信度ボタンの初期表示状態（回答回数に応じて色）
-  const saved = questionHistory[q.id];
-  const savedConfidence = saved?.confidence;
-  const savedCount = saved?.count || 0;
-
+  // 自信度ボタンの初期表示（回答回数が0なら無色、>0なら保存値に色）
   document.querySelectorAll(".confidence").forEach(btn => {
-    btn.classList.remove("selected"); // いったん無色
+    btn.classList.remove("selected");
     if (savedCount > 0 && btn.dataset.level === savedConfidence) {
-      btn.classList.add("selected"); // 以前の選択を再現
+      btn.classList.add("selected");
     }
   });
-
-  // もし「既に回答済みかつ自信度があれば」→ NEXT を有効化（再学習時のUX向上）
-  if (savedCount > 0 && savedConfidence) {
-    nextBtn.disabled = false;
-  }
 }
 
 // ====== 回答処理（正誤表示 & 自信度必須） ======
 function handleAnswer(selectedKey, button) {
   const isCorrect = selectedKey === currentQuestion.answer;
 
-  // 選択肢ボタンを無効化し、見た目を更新
+  // 選択肢ボタンの見た目＆無効化
   const buttons = document.querySelectorAll(".choice-button");
   buttons.forEach(btn => btn.disabled = true);
   buttons.forEach(btn => {
@@ -207,7 +232,7 @@ function handleAnswer(selectedKey, button) {
   questionHistory[qid].correct = isCorrect;
   questionHistory[qid].count = (questionHistory[qid].count || 0) + 1;
 
-  // 自信度を選ばないと NEXT は押せない
+  // 自信度未選択のままでは NEXT を押せない
   const nextBtn = document.getElementById("next-btn");
   nextBtn.disabled = true;
 
@@ -231,7 +256,7 @@ function saveResult() {
   }).catch(e => console.warn("成績の保存に失敗:", e));
 }
 
-// ====== 選択肢のシャッフル（出題順からはランダム排除。選択肢だけシャッフルします） ======
+// ====== 選択肢のシャッフル（出題順は固定。選択肢だけシャッフルします） ======
 function shuffle(array) {
   const result = [...array];
   for (let i = result.length - 1; i > 0; i--) {
