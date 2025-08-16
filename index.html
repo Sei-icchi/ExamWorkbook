@@ -1,54 +1,70 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>技能検定 問題集</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Start Screen -->
   <div id="start-screen" class="centered">
     <h1>技能検定 問題集</h1>
-    <input type="text" id="username" class="narrow-input" placeholder="ユーザー名を入力" required>
-    <div>
-      <label>ジャンルを選択:</label><br>
+
+    <div class="form-row">
+      <label for="username" class="sr-only">ユーザー名</label>
+      <input type="text" id="username" class="narrow-input" placeholder="ユーザー名を入力" required />
+    </div>
+
+    <div class="form-row">
+      <div class="form-label">ジャンルを選択:</div>
       <div class="genre-grid">
-        <label><input type="checkbox" value="歴史" checked>歴史</label>
-        <label><input type="checkbox" value="光・色彩" checked>光・色彩</label>
-        <label><input type="checkbox" value="カメラ・レンズ" checked>カメラ・レンズ</label>
-        <label><input type="checkbox" value="撮影・ライティング" checked>撮影・ライティング</label>
-        <label><input type="checkbox" value="画像処理" checked>画像処理</label>
-        <label><input type="checkbox" value="その他" checked>その他</label>
+        <label><input type="checkbox" value="歴史" checked />歴史</label>
+        <label><input type="checkbox" value="光・色彩" checked />光・色彩</label>
+        <label><input type="checkbox" value="カメラ・レンズ" checked />カメラ・レンズ</label>
+        <label><input type="checkbox" value="撮影・ライティング" checked />撮影・ライティング</label>
+        <label><input type="checkbox" value="画像処理" checked />画像処理</label>
+        <label><input type="checkbox" value="その他" checked />その他</label>
       </div>
     </div>
-    <div>
-      <label>出題方式:</label><br>
+
+    <div class="form-row">
+      <div class="form-label">出題方式:</div>
+      <!-- ボックスは残す（ロジックは使わない＆空の項目に） -->
       <select id="mode-select" class="narrow-select">
-        <option value="all">全ての問題を出題</option>
-        <option value="unanswered">出題回数の少ない問題を優先</option>
-        <option value="incorrect">不正解の問題を優先</option>
+        <option value="balanced"> </option>
       </select>
     </div>
-    <button id="start-btn">スタート</button>
+
+    <button id="start-btn" class="primary">スタート</button>
   </div>
 
+  <!-- Quiz Screen -->
   <div id="quiz-screen" class="hidden">
-    <div id="question-container"></div>
-    <div id="choices-container"></div>
-    <div id="feedback" class="hidden"></div>
-    <div id="confidence-container" class="hidden">
-      <label>自信度:</label>
-      <button class="confidence" data-level="低">低</button>
-      <button class="confidence" data-level="中">中</button>
-      <button class="confidence" data-level="高">高</button>
+    <div id="question-container" class="question"></div>
+    <div id="choices-container" class="choices"></div>
+
+    <div id="feedback" class="hidden feedback"></div>
+
+    <div id="confidence-container" class="hidden confidence-wrap">
+      <div class="confidence-row">
+        <span>自信度:</span>
+        <button class="confidence" data-level="低" type="button">低</button>
+        <button class="confidence" data-level="中" type="button">中</button>
+        <button class="confidence" data-level="高" type="button">高</button>
+      </div>
       <textarea id="memo" placeholder="メモを入力..."></textarea>
+      <!-- コントロールボタンはJSで都度再生成（重複防止のため） -->
     </div>
   </div>
 
+  <!-- Score Screen -->
   <div id="score-screen" class="hidden">
     <h2>成績一覧</h2>
-    <div id="score-table"></div>
-    <button onclick="backToQuiz()">戻る</button>
+    <div id="score-table" class="table-wrap"></div>
+    <div class="score-actions">
+      <button type="button" onclick="backToQuiz()">戻る</button>
+    </div>
   </div>
 
   <script src="script.js"></script>
