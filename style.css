@@ -87,18 +87,16 @@ textarea{width:90%;height:90px;font-size:1em;margin-top:8px}
 }
 #score-back-fab:hover{filter:brightness(1.05)}
 
-/* 箱の中身を縦並び・中央揃えに */
+/* 箱の中身を中央寄せ */
 .filter-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;  /* 中央寄せ */
-  gap: 8px;             /* 要素間の間隔を少し */
-  text-align: center;   /* テキストも中央に */
+  text-align: center;         /* ← 既存の text-align:left を上書き */
 }
 
-/* 入力やプルダウンの幅は既存の narrow-* を使用 */
+/* 入力やプルダウンを中央に置く */
 .filter-block .narrow-input,
 .filter-block .narrow-select {
   display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
