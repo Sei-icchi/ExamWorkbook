@@ -1,191 +1,48 @@
-/* Base */
-:root {
-  --bg: #f6f7fb;
-  --text: #222;
-  --muted: #666;
-  --primary: #2563eb;
-  --danger: #e11d48;
-  --radius: 12px;
-}
-
-* { box-sizing: border-box; }
-html, body { height: 100%; }
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
-  padding: 16px;
-  font-size: 18px; /* スマホで少し大きめ */
-}
-
-/* Accessibility */
-.sr-only {
-  position: absolute;
-  width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0); border: 0;
-}
-
-/* Start Screen */
-.centered {
-  max-width: 720px;
-  margin: 6vh auto 0;
-  text-align: center;
-  background: #fff;
-  border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(0,0,0,.06);
-  padding: 24px 20px;
-}
-.centered h1 { margin: 0 0 12px; }
-
-.form-row {
-  margin: 14px auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.form-label {
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: .95em;
-}
-.narrow-input, .narrow-select {
-  width: 320px;
-  max-width: 90%;
-  padding: 10px 12px;
-  font-size: 1rem;
-  border: 1px solid #dcdde4;
-  border-radius: 10px;
-  background: #fff;
-}
-.genre-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px 14px;
-  max-width: 520px;
-  width: 100%;
-  margin: 8px auto 0;
-  text-align: left;
-}
-.genre-grid label { white-space: nowrap; }
-
-/* Buttons */
-button {
-  border: none;
-  border-radius: 10px;
-  background: #fff;
-  color: var(--text);
-  padding: 10px 16px;
-  font-size: 1rem;
-  cursor: pointer;
-  box-shadow: 0 2px 0 rgba(0,0,0,.06);
-  transition: transform .05s ease, box-shadow .2s ease, background-color .2s ease;
-}
-button:hover { transform: translateY(-1px); }
-button:disabled { opacity: .6; cursor: not-allowed; }
-button.primary {
-  background: var(--primary);
-  color: #fff;
-}
-
-/* Quiz Screen */
-.question {
-  max-width: 900px;
-  margin: 0 auto 12px;
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-.choices {
-  max-width: 900px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr)); /* 2x2 */
-  gap: 12px; /* 間隔を少し狭く */
-}
-.choice-button {
-  padding: 14px 12px;
-  font-size: 1.05rem;
-  border: 2px solid #3d3d3d;
-  border-radius: 12px;
-  background: #fff;
-}
-.choice-button.correct { background: var(--primary) !important; color: #fff; border-color: transparent; }
-.choice-button.incorrect { background: var(--danger) !important; color: #fff; border-color: transparent; }
-
-.feedback {
-  max-width: 900px;
-  margin: 16px auto 0;
-  font-size: 1.4rem;
-  font-weight: 800;
-}
-
-.confidence-wrap {
-  max-width: 900px;
-  margin: 16px auto 0;
-  padding-bottom: 8px;
-}
-.confidence-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-.confidence {
-  padding: 8px 14px;
-  border: 1px solid #c9cada;
-  background: #fff;
-}
-.confidence.selected {
-  background: var(--primary);
-  color: #fff;
-  border-color: transparent;
-}
-
-textarea#memo {
-  width: 100%;
-  height: 90px;
-  font-size: 1rem;
-  padding: 10px 12px;
-  border: 1px solid #dcdde4;
-  border-radius: 10px;
-  resize: vertical;
-  background: #fff;
-}
-
-/* Control buttons (Next / Exit / Score) */
-#control-buttons {
-  margin-top: 18px;
-  display: flex;
-  justify-content: center; /* 最下部に中央並び */
-  gap: 14px;
-}
-#next-btn {
-  font-size: 1.2rem;
-  padding: 14px 28px;
-}
-
-/* Score Screen */
-#score-screen {
-  max-width: 960px;
-  margin: 24px auto 0;
-  background: #fff;
+body{
+  font-family: system-ui, -apple-system, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
   padding: 20px;
-  border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(0,0,0,.06);
+  font-size: 1.1em;
+  background: #f5f7fb;
+  color:#222;
 }
-.table-wrap table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: .95rem;
+h1{font-size:1.6em;margin-bottom:10px}
+h2{font-size:1.0em;margin:18px 0 8px;color:#333}
+.centered{max-width:900px;margin:0 auto;text-align:center}
+.filter-block{background:#fff;border:1px solid #e6e9f2;border-radius:10px;padding:12px;margin:10px auto;text-align:left}
+.narrow-input,.narrow-select{
+  padding:10px;font-size:1em;margin:6px 0;width:300px;max-width:90%;
 }
-.table-wrap th, .table-wrap td {
-  border-bottom: 1px solid #ececf4;
-  padding: 8px 10px;
-  text-align: left;
+button{padding:10px 20px;margin:10px;font-size:1em;cursor:pointer;border-radius:10px;border:1px solid #d0d7e2;background:#fff}
+button:hover{background:#f1f5fb}
+.hidden{display:none}
+#question-container{font-size:1.2em;font-weight:600;margin:10px auto 6px;max-width:900px}
+#choices-container{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:900px;margin:10px auto;
 }
-.table-wrap th { background: #f7f8ff; }
-.score-actions { margin-top: 10px; }
+.choice-button{
+  background:#fff;border:2px solid #3b4252;border-radius:12px;padding:12px;min-height:56px;
+  font-size:1.05em;transition:.2s;text-align:center
+}
+.choice-button:hover{background:#eef2ff}
+.correct{background:#4a90e2 !important;color:#fff;border-color:#4a90e2}
+.incorrect{background:#e94e4e !important;color:#fff;border-color:#e94e4e}
+#feedback{font-size:1.4em;margin:10px 0;font-weight:700}
+.confidence{margin:5px;padding:10px 14px;border-radius:8px;border:1px solid #d0d7e2}
+.confidence.selected{background:#4a90e2;color:#fff;border-color:#4a90e2}
+textarea{width:90%;height:90px;font-size:1em;margin-top:8px}
 
-.hidden { display: none; }
+#control-buttons{margin-top:22px;display:flex;justify-content:center;gap:16px}
+#next-btn{font-size:1.2em;padding:14px 28px;border:2px solid #3b82f6}
+#score-btn{padding:12px 20px}
+#exit-btn{padding:12px 20px}
+
+#score-screen{max-width:1000px;margin:0 auto;text-align:center}
+#score-table table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden}
+#score-table th,#score-table td{border:1px solid #e6e9f2;padding:10px;text-align:left;font-size:0.95em}
+#score-table th{background:#f7f9fe}
+#score-back-fab{
+  position:fixed;right:20px;bottom:20px;width:64px;height:64px;border-radius:12px;
+  background:#4a90e2;color:#fff;border:none;box-shadow:0 6px 16px rgba(0,0,0,.15);
+  font-size:0.95em
+}
+#score-back-fab:hover{filter:brightness(1.05)}

@@ -1,149 +1,157 @@
-// ====== script.js（モードロジック撤去・バランス出題版） ======
+// ==== Firebase Config ====
 const firebaseConfig = {
   apiKey: "AIzaSyDcWdByC9LIILR19LlAWAor_VtY2y47kUk",
   authDomain: "exampractice-d2ed3.firebaseapp.com",
   databaseURL: "https://exampractice-d2ed3-default-rtdb.firebaseio.com",
   projectId: "exampractice-d2ed3",
 };
-
 const DB_URL = firebaseConfig.databaseURL + "/questions.json";
 const RESULT_URL = firebaseConfig.databaseURL + "/results.json";
 
-let questions = {};
-let currentQuestion = null;
+// ==== App State ====
+let questions = {};            // {id: questionObj}
+let sortedIds = [];            // ID昇順の並び
 let currentUser = "";
-let currentGenre = [];
-let questionHistory = {};
-let lastServedId = null; // 最小回数グループ内の巡回用
+let questionHistory = {};      // per-user stats map
+let currentQuestion = null;
 
-document.getElementById("start-btn").addEventListener("click", async () => {
+// Filters (3 blocks)
+let modeFilter = "fewest";     // 出題モード（デフォルト：出題回数が少ない問題）
+let keywordFilter = "";        // キーワード
+let genreFilter = "ALL";       // ジャンル（ALL or具体的ジャンル）
+
+// ==== DOM Refs ====
+const startBtn = document.getElementById("start-btn");
+const modeSelect = document.getElementById("mode-select");
+const keywordInput = document.getElementById("keyword-input");
+const genreSelect = document.getElementById("genre-select");
+
+// ==== Event Listeners on Start Screen ====
+modeSelect.addEventListener("change", () => { modeFilter = modeSelect.value; });
+keywordInput.addEventListener("input", () => { keywordFilter = keywordInput.value.trim(); });
+genreSelect.addEventListener("change", () => { genreFilter = genreSelect.value; });
+
+// ==== Start Button ====
+startBtn.addEventListener("click", async () => {
   const usernameInput = document.getElementById("username").value.trim();
-  if (!usernameInput) {
-    alert("ユーザー名を入力してください");
-    return;
-  }
+  if (!usernameInput) { alert("ユーザー名を入力してください"); return; }
   currentUser = usernameInput;
 
-  // モード選択ボックスは残すが、内容とロジックは無効化
-  const modeSelect = document.getElementById("mode-select");
-  if (modeSelect) {
-    modeSelect.innerHTML = '<option value="balanced"> </option>';
-    modeSelect.disabled = false;
-  }
+  // 既存成績のロード
+  const res = await fetch(RESULT_URL);
+  const data = await res.json();
+  if (data && data[currentUser]) questionHistory = data[currentUser];
 
-  const checkboxes = document.querySelectorAll("input[type=checkbox]:checked");
-  currentGenre = Array.from(checkboxes).map(cb => cb.value);
-  if (currentGenre.length === 0) {
-    alert("ジャンルを1つ以上選択してください");
-    return;
-  }
+  // 問題のロード
+  const qRes = await fetch(DB_URL);
+  questions = await qRes.json();
+  // ID昇順を用意（数値的に並べたいなら pad されたID前提/または数値比較）
+  sortedIds = Object.keys(questions).sort();
 
-  // 履歴読み込み
-  try {
-    const res = await fetch(RESULT_URL);
-    const data = await res.json();
-    if (data && data[currentUser]) {
-      questionHistory = data[currentUser];
-    }
-  } catch (e) {
-    console.warn("成績データの取得に失敗しました:", e);
-  }
-
-  // 問題取得
-  try {
-    const qRes = await fetch(DB_URL);
-    questions = await qRes.json();
-  } catch (e) {
-    alert("問題データの取得に失敗しました。設定をご確認ください。");
-    return;
-  }
-
+  // 画面遷移
   document.getElementById("start-screen").classList.add("hidden");
   document.getElementById("quiz-screen").classList.remove("hidden");
-
-  lastServedId = null;
   showNextQuestion();
 });
 
-// "001" -> 1 のようにIDを数値化して比較順を安定化
-function idToNum(id) {
-  const n = parseInt(String(id).replace(/^0+/, ''), 10);
-  return isNaN(n) ? Number.MAX_SAFE_INTEGER : n;
+// ==== Candidate Builder (3フィルタ) ====
+function buildCandidates() {
+  let ids = sortedIds.slice();
+
+  // Block3: ジャンル単一フィルタ
+  if (genreFilter !== "ALL") {
+    ids = ids.filter(id => questions[id]?.genre === genreFilter);
+  }
+
+  // Block2: キーワード（問題文のみ対象）
+  if (keywordFilter) {
+    const kw = keywordFilter.toLowerCase();
+    ids = ids.filter(id => (questions[id]?.question || "").toLowerCase().includes(kw));
+  }
+
+  // Block1: 出題モード（単一選択）
+  if (modeFilter === "incorrect") {
+    ids = ids.filter(id => questionHistory[id]?.correct === false);
+  } else if (modeFilter === "conf_low") {
+    ids = ids.filter(id => (questionHistory[id]?.confidence || "") === "低");
+  } else if (modeFilter === "conf_mid") {
+    ids = ids.filter(id => (questionHistory[id]?.confidence || "") === "中");
+  } else if (modeFilter === "conf_high") {
+    ids = ids.filter(id => (questionHistory[id]?.confidence || "") === "高");
+  } else if (modeFilter === "fewest") {
+    // 「出題回数が少ない問題」を優先しつつ、ID順にバランスよく
+    ids.sort((a, b) => {
+      const ac = questionHistory[a]?.count || 0;
+      const bc = questionHistory[b]?.count || 0;
+      if (ac !== bc) return ac - bc;       // 出題回数が少ない順
+      return a.localeCompare(b);           // 同回数なら ID 昇順
+    });
+  } else if (modeFilter === "all") {
+    // すべて（ID順）
+    ids.sort((a, b) => a.localeCompare(b));
+  }
+
+  return ids;
 }
 
-// バランス出題
+// ==== Next Question Picker (非ランダム・ID順ベース) ====
+function pickNextId(previousId=null) {
+  const candidates = buildCandidates();
+  if (candidates.length === 0) return null;
+
+  // fewest/all では ID 昇順で進む。前問が存在する場合はその次へ、なければ先頭。
+  if (modeFilter === "fewest" || modeFilter === "all") {
+    if (!previousId) return candidates[0];
+    const idx = candidates.indexOf(previousId);
+    if (idx === -1 || idx === candidates.length - 1) return candidates[0];
+    return candidates[idx + 1];
+  }
+
+  // incorrect/conf_* の場合も、基本は ID 昇順で次へ
+  if (!previousId) return candidates[0];
+  const idx = candidates.indexOf(previousId);
+  if (idx === -1 || idx === candidates.length - 1) return candidates[0];
+  return candidates[idx + 1];
+}
+
 function showNextQuestion() {
-  const all = Object.values(questions || {});
-  let candidates = all.filter(q => currentGenre.includes(q.genre));
-
-  if (candidates.length === 0) {
-    alert("対象の問題がありません。");
-    return;
-  }
-
-  // 出題回数を算出
-  const withCount = candidates.map(q => {
-    const cnt = questionHistory[q.id]?.count || 0;
-    return { q, count: cnt };
-  });
-
-  // 最小回数のみ抽出
-  const minCount = Math.min(...withCount.map(x => x.count));
-  let minGroup = withCount.filter(x => x.count === minCount).map(x => x.q);
-
-  // ID昇順
-  minGroup.sort((a, b) => idToNum(a.id) - idToNum(b.id));
-
-  // lastServedId より大きいIDを優先、無ければ先頭
-  let next = null;
-  if (lastServedId !== null) {
-    const lastNum = idToNum(lastServedId);
-    next = minGroup.find(q => idToNum(q.id) > lastNum) || null;
-  }
-  if (!next) next = minGroup[0];
-
-  currentQuestion = next;
-  lastServedId = currentQuestion.id;
-
+  const nextId = pickNextId(currentQuestion?.id || null);
+  if (!nextId) { alert("対象の問題がありません。"); return; }
+  currentQuestion = questions[nextId];
   displayQuestion();
 }
 
+// ==== Render Current Question ====
 function displayQuestion() {
   const q = currentQuestion;
   document.getElementById("question-container").innerText = q.question;
 
-  // 選択肢
-  let choices = ["c1", "c2", "c3", "c4"];
-  if (q.c1 === "◯") choices = ["c1", "c2"];
-
-  // c1が◯のときは順序固定／それ以外は選択肢だけシャッフル
-  const displayChoices = (q.c1 === "◯") ? choices : shuffle(choices);
-
-  // 選択肢描画
+  // Choices: c1〜c4。c1が「◯」のときのみ2択表示（c1,c2）
   const container = document.getElementById("choices-container");
   container.innerHTML = "";
-  displayChoices.forEach(key => {
-    const text = q[key] || "[選択肢未設定]";
+  const keys = (q.c1 === "◯") ? ["c1","c2"] : ["c1","c2","c3","c4"]; // 選択肢のランダム化は削除
+
+  keys.forEach(key => {
     const btn = document.createElement("button");
     btn.className = "choice-button";
     btn.dataset.key = key;
-    btn.textContent = text;
+    btn.textContent = q[key] || "[選択肢未設定]";
     btn.onclick = () => handleAnswer(key, btn);
     container.appendChild(btn);
   });
 
-  // 初期化
   document.getElementById("feedback").classList.add("hidden");
   document.getElementById("confidence-container").classList.add("hidden");
 
-  // メモ復元
+  // 既存メモ表示
   const memoInput = document.getElementById("memo");
   memoInput.value = questionHistory[q.id]?.memo || "";
 
-  // 自信度ボタン復元（回答回数0なら無色）
+  // 自信度ボタンの復元（回答回数に応じた色）
   const saved = questionHistory[q.id];
   const savedConfidence = saved?.confidence;
   const savedCount = saved?.count || 0;
+
   document.querySelectorAll(".confidence").forEach(btn => {
     btn.classList.remove("selected");
     if (savedCount > 0 && btn.dataset.level === savedConfidence) {
@@ -151,26 +159,25 @@ function displayQuestion() {
     }
   });
 
-  // コントロール行を再構築（重複防止）
+  // ボタン群を下部に生成（重複防止）
   const existingControl = document.getElementById("control-buttons");
   if (existingControl) existingControl.remove();
-
   const controlContainer = document.createElement("div");
   controlContainer.id = "control-buttons";
 
-  // 成績（NEXTの左）
   const scoreBtn = document.createElement("button");
   scoreBtn.id = "score-btn";
   scoreBtn.textContent = "成績";
   scoreBtn.onclick = () => showScore();
   controlContainer.appendChild(scoreBtn);
 
-  // NEXT（自信度が未設定なら無効）
   const nextBtn = document.createElement("button");
   nextBtn.id = "next-btn";
   nextBtn.textContent = "Next";
+  // 初期は、過去回答があって自信度が保存されている場合のみ有効
   nextBtn.disabled = !(savedConfidence && savedCount > 0);
   nextBtn.onclick = () => {
+    // メモ保存
     if (!questionHistory[q.id]) questionHistory[q.id] = {};
     questionHistory[q.id].memo = memoInput.value;
     saveResult();
@@ -178,7 +185,6 @@ function displayQuestion() {
   };
   controlContainer.appendChild(nextBtn);
 
-  // EXIT
   const exitBtn = document.createElement("button");
   exitBtn.id = "exit-btn";
   exitBtn.textContent = "Exit";
@@ -191,14 +197,12 @@ function displayQuestion() {
   document.getElementById("confidence-container").appendChild(controlContainer);
 }
 
+// ==== Answer Handler ====
 function handleAnswer(selectedKey, button) {
   const isCorrect = selectedKey === currentQuestion.answer;
-
-  // 選択肢ボタンをロック
   const buttons = document.querySelectorAll(".choice-button");
   buttons.forEach(btn => btn.disabled = true);
 
-  // 色付け：正解は青／不正解の押下は赤
   buttons.forEach(btn => {
     if (btn.dataset.key === currentQuestion.answer) {
       btn.classList.add("correct");
@@ -207,7 +211,6 @@ function handleAnswer(selectedKey, button) {
     }
   });
 
-  // 正誤表示
   document.getElementById("feedback").classList.remove("hidden");
   document.getElementById("feedback").innerText = isCorrect ? "正解！" : "不正解！";
   document.getElementById("confidence-container").classList.remove("hidden");
@@ -217,18 +220,19 @@ function handleAnswer(selectedKey, button) {
   questionHistory[currentQuestion.id].correct = isCorrect;
   questionHistory[currentQuestion.id].count = (questionHistory[currentQuestion.id].count || 0) + 1;
 
-  // 自信度：選択で色付け＆NEXT解放
+  // 自信度の選択 → NEXT有効化
   document.querySelectorAll(".confidence").forEach(btn => {
     btn.onclick = () => {
       questionHistory[currentQuestion.id].confidence = btn.dataset.level;
       document.querySelectorAll(".confidence").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
-      const nextBtn = document.getElementById("next-btn");
-      if (nextBtn) nextBtn.disabled = false;
+      const nb = document.getElementById("next-btn");
+      if (nb) nb.disabled = false;
     };
   });
 }
 
+// ==== Save to Firebase ====
 function saveResult() {
   fetch(RESULT_URL, {
     method: "PATCH",
@@ -237,17 +241,7 @@ function saveResult() {
   });
 }
 
-// 選択肢の表示順だけシャッフル
-function shuffle(array) {
-  const result = [...array];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-// 成績一覧
+// ==== Score Screen ====
 function showScore() {
   const scoreScreen = document.getElementById("score-screen");
   const scoreTable = document.getElementById("score-table");
@@ -255,20 +249,21 @@ function showScore() {
 
   const table = document.createElement("table");
   const header = document.createElement("tr");
-  ["ID", "問題", "出題回数", "正解数", "自信度", "メモ"].forEach(text => {
+  ["ID","問題","出題回数","正解数","自信度","メモ"].forEach(text => {
     const th = document.createElement("th");
     th.innerText = text;
     header.appendChild(th);
   });
   table.appendChild(header);
 
-  Object.keys(questionHistory).sort((a, b) => idToNum(a) - idToNum(b)).forEach(id => {
+  // ID昇順で出力
+  sortedIds.forEach(id => {
     const q = questions[id];
     const h = questionHistory[id];
     if (!q || !h) return;
 
     const tr = document.createElement("tr");
-    const correctCount = h.correct ? 1 : 0; // 直近正誤を1/0表示（必要に応じて拡張）
+    const correctCount = h.correct ? 1 : 0; // 単純カウント（必要なら累積に拡張）
     [id, q.question, h.count || 0, correctCount, h.confidence || "", h.memo || ""].forEach(val => {
       const td = document.createElement("td");
       td.innerText = val;
@@ -278,11 +273,15 @@ function showScore() {
   });
 
   scoreTable.appendChild(table);
+
+  // 画面切替
   document.getElementById("quiz-screen").classList.add("hidden");
   scoreScreen.classList.remove("hidden");
-}
 
-function backToQuiz() {
-  document.getElementById("score-screen").classList.add("hidden");
-  document.getElementById("quiz-screen").classList.remove("hidden");
+  // 右下固定フローティング戻るボタン
+  const backFab = document.getElementById("score-back-fab");
+  backFab.onclick = () => {
+    scoreScreen.classList.add("hidden");
+    document.getElementById("quiz-screen").classList.remove("hidden");
+  };
 }

@@ -2,69 +2,74 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>技能検定 問題集</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
   <!-- Start Screen -->
   <div id="start-screen" class="centered">
     <h1>技能検定 問題集</h1>
 
-    <div class="form-row">
-      <label for="username" class="sr-only">ユーザー名</label>
-      <input type="text" id="username" class="narrow-input" placeholder="ユーザー名を入力" required />
-    </div>
-
-    <div class="form-row">
-      <div class="form-label">ジャンルを選択:</div>
-      <div class="genre-grid">
-        <label><input type="checkbox" value="歴史" checked />歴史</label>
-        <label><input type="checkbox" value="光・色彩" checked />光・色彩</label>
-        <label><input type="checkbox" value="カメラ・レンズ" checked />カメラ・レンズ</label>
-        <label><input type="checkbox" value="撮影・ライティング" checked />撮影・ライティング</label>
-        <label><input type="checkbox" value="画像処理" checked />画像処理</label>
-        <label><input type="checkbox" value="その他" checked />その他</label>
-      </div>
-    </div>
-
-    <div class="form-row">
-      <div class="form-label">出題方式:</div>
-      <!-- ボックスは残す（ロジックは使わない＆空の項目に） -->
+    <!-- Block 1: 出題モードの選択（単一選択） -->
+    <section class="filter-block">
+      <h2>出題モードの選択</h2>
       <select id="mode-select" class="narrow-select">
-        <option value="balanced"> </option>
+        <option value="fewest" selected>出題回数が少ない問題</option>
+        <option value="all">全ての問題</option>
+        <option value="incorrect">不正解の問題</option>
+        <option value="conf_low">自信度が 低</option>
+        <option value="conf_mid">自信度が 中</option>
+        <option value="conf_high">自信度が 高</option>
       </select>
-    </div>
+    </section>
 
-    <button id="start-btn" class="primary">スタート</button>
+    <!-- Block 2: キーワード検索 -->
+    <section class="filter-block">
+      <h2>キーワード検索</h2>
+      <input type="text" id="keyword-input" class="narrow-input" placeholder="問題文から検索（例：露光）"/>
+    </section>
+
+    <!-- Block 3: ジャンル選択（単一選択） -->
+    <section class="filter-block">
+      <h2>ジャンル選択</h2>
+      <select id="genre-select" class="narrow-select">
+        <option value="ALL" selected>全てのジャンル</option>
+        <option value="歴史">歴史</option>
+        <option value="光・色彩">光・色彩</option>
+        <option value="カメラ・レンズ">カメラ・レンズ</option>
+        <option value="撮影・ライティング">撮影・ライティング</option>
+        <option value="画像処理">画像処理</option>
+        <option value="その他">その他</option>
+      </select>
+    </section>
+
+    <!-- User name -->
+    <input type="text" id="username" class="narrow-input" placeholder="ユーザー名を入力" required/>
+
+    <button id="start-btn">スタート</button>
   </div>
 
   <!-- Quiz Screen -->
   <div id="quiz-screen" class="hidden">
-    <div id="question-container" class="question"></div>
-    <div id="choices-container" class="choices"></div>
+    <div id="question-container"></div>
+    <div id="choices-container"></div>
+    <div id="feedback" class="hidden"></div>
 
-    <div id="feedback" class="hidden feedback"></div>
-
-    <div id="confidence-container" class="hidden confidence-wrap">
-      <div class="confidence-row">
-        <span>自信度:</span>
-        <button class="confidence" data-level="低" type="button">低</button>
-        <button class="confidence" data-level="中" type="button">中</button>
-        <button class="confidence" data-level="高" type="button">高</button>
-      </div>
+    <div id="confidence-container" class="hidden">
+      <label>自信度:</label>
+      <button class="confidence" data-level="低">低</button>
+      <button class="confidence" data-level="中">中</button>
+      <button class="confidence" data-level="高">高</button>
       <textarea id="memo" placeholder="メモを入力..."></textarea>
-      <!-- コントロールボタンはJSで都度再生成（重複防止のため） -->
     </div>
   </div>
 
   <!-- Score Screen -->
   <div id="score-screen" class="hidden">
     <h2>成績一覧</h2>
-    <div id="score-table" class="table-wrap"></div>
-    <div class="score-actions">
-      <button type="button" onclick="backToQuiz()">戻る</button>
-    </div>
+    <div id="score-table"></div>
+    <button id="score-back-fab" title="戻る">戻る</button>
   </div>
 
   <script src="script.js"></script>
