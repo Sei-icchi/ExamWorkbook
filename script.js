@@ -5,6 +5,7 @@ const firebaseConfig = {
   databaseURL: "https://exampractice-d2ed3-default-rtdb.firebaseio.com",
   projectId: "exampractice-d2ed3",
 };
+
 const DB_URL = firebaseConfig.databaseURL + "/questions.json";
 const RESULT_URL = firebaseConfig.databaseURL + "/results.json";
 
@@ -116,7 +117,14 @@ function pickNextId(previousId=null) {
 
 function showNextQuestion() {
   const nextId = pickNextId(currentQuestion?.id || null);
-  if (!nextId) { alert("対象の問題がありません。"); return; }
+  if (!nextId) {
+    alert("対象の問題がありません。");
+    // 初期画面へ戻す
+    document.getElementById("quiz-screen").classList.add("hidden");
+    document.getElementById("start-screen").classList.remove("hidden");
+    currentQuestion = null;
+    return;
+  }
   currentQuestion = questions[nextId];
   displayQuestion();
 }
