@@ -1,0 +1,102 @@
+body{
+  font-family: system-ui, -apple-system, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+  padding: 20px;
+  font-size: 1.1em;
+  background: #f5f7fb;
+  color:#222;
+}
+h1{font-size:1.6em;margin-bottom:10px}
+h2{font-size:1.0em;margin:18px 0 8px;color:#333}
+.centered{max-width:900px;margin:0 auto;text-align:center}
+.filter-block{background:#fff;border:1px solid #e6e9f2;border-radius:10px;padding:12px;margin:10px auto;text-align:left}
+.narrow-input,.narrow-select{
+  padding:10px;font-size:1em;margin:6px 0;width:300px;max-width:90%;
+}
+button{padding:10px 20px;margin:10px;font-size:1em;cursor:pointer;border-radius:10px;border:1px solid #d0d7e2;background:#fff}
+button:hover{background:#f1f5fb}
+.hidden{display:none}
+#question-container{font-size:1.2em;font-weight:600;margin:10px auto 6px;max-width:900px}
+#choices-container{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:900px;margin:10px auto;
+}
+.choice-button{
+  background:#fff;border:2px solid #3b4252;border-radius:12px;padding:12px;min-height:56px;
+  font-size:1.05em;transition:.2s;text-align:center
+  color: black; /* 初期文字色を黒にする */
+}
+.choice-button:hover{background:#eef2ff}
+.correct{background:#4a90e2 !important;color:#fff;border-color:#4a90e2}
+.incorrect{background:#e94e4e !important;color:#fff;border-color:#e94e4e}
+#feedback{font-size:1.4em;margin:10px 0;font-weight:700}
+.confidence{margin:5px;padding:10px 14px;border-radius:8px;border:1px solid #d0d7e2}
+.confidence.selected{background:#4a90e2;color:#fff;border-color:#4a90e2}
+textarea{width:90%;height:90px;font-size:1em;margin-top:8px}
+
+#control-buttons{margin-top:22px;display:flex;justify-content:center;gap:16px}
+#next-btn{font-size:1.2em;padding:14px 28px;border:2px solid #3b82f6}
+#score-btn{padding:12px 20px}
+#exit-btn{padding:12px 20px}
+
+/* ユーザー名入力欄 */
+#username {
+  display: block;
+  margin: 30px auto 15px auto;  /* ジャンル選択との間隔を広めに */
+  padding: 12px 16px;
+  font-size: 1.1em;
+  border: 2px solid #d0d7e2;
+  border-radius: 8px;
+  width: 280px;
+  max-width: 90%;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+#username:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 6px rgba(74,144,226,0.4);
+  outline: none;
+}
+
+/* スタートボタン */
+#start-btn {
+  display: block;
+  margin: 10px auto;
+  padding: 14px 32px;
+  font-size: 1.2em;
+  font-weight: bold;
+  border-radius: 10px;
+  border: none;
+  background: #4a90e2;
+  color: white;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+#start-btn:hover {
+  background: #357abd;
+  transform: translateY(-2px);
+}
+
+
+#score-screen{max-width:1000px;margin:0 auto;text-align:center}
+#score-table table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden}
+#score-table th,#score-table td{border:1px solid #e6e9f2;padding:10px;text-align:left;font-size:0.95em}
+#score-table th{background:#f7f9fe}
+#score-back-fab{
+  position:fixed;right:20px;bottom:20px;width:64px;height:64px;border-radius:12px;
+  background:#4a90e2;color:#fff;border:none;box-shadow:0 6px 16px rgba(0,0,0,.15);
+  font-size:0.95em
+}
+#score-back-fab:hover{filter:brightness(1.05)}
+
+/* 箱の中身を中央寄せ */
+.filter-block {
+  text-align: center;         /* ← 既存の text-align:left を上書き */
+}
+
+/* 入力やプルダウンを中央に置く */
+.filter-block .narrow-input,
+.filter-block .narrow-select {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
