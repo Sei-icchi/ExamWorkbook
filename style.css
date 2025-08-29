@@ -21,8 +21,11 @@ button:hover{background:#f1f5fb}
 }
 .choice-button{
   background:#fff;border:2px solid #3b4252;border-radius:12px;padding:12px;min-height:56px;
-  font-size:1.05em;transition:.2s;text-align:center
-  color: black; /* 初期文字色を黒にする */
+  font-size:1.05em;transition:.2s;text-align:center;
+  color:#222;                 /* 任意の標準色 */
+  -webkit-text-fill-color:#222;/* iOS/Safari での文字色明示 */
+  -webkit-appearance:none;     /* iOSのボタン外観を打ち消し */
+  appearance:none;
 }
 .choice-button:hover{background:#eef2ff}
 .correct{background:#4a90e2 !important;color:#fff;border-color:#4a90e2}
