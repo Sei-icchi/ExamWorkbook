@@ -5,14 +5,17 @@ const firebaseConfig = {
   databaseURL: "https://exampractice-d2ed3-default-rtdb.firebaseio.com",
   projectId: "exampractice-d2ed3",
 };
+
+// DB Endpoints
 const DB_URL = firebaseConfig.databaseURL + "/questions.json";
-const RESULT_URL = firebaseConfig.databaseURL + "/results.json";
+const userResultUrl = (username) =>
+  `${firebaseConfig.databaseURL}/results/${encodeURIComponent(username)}.json`;
 
 // ==== App State ====
 let questions = {};            // {id: questionObj}
 let sortedIds = [];            // ID昇順
 let currentUser = "";
-let questionHistory = {};      // per-user stats map
+let questionHistory = {};      // { [id]: { count, correct_count, incorrect_count, confidence, memo, last_correct } }
 let currentQuestion = null;
 
 // Filters (3 blocks)
@@ -20,13 +23,13 @@ let modeFilter = "fewest";     // 出題モード（デフォルト：出題回�
 let keywordFilter = "";        // キーワード
 let genreFilter = "ALL";       // ジャンル
 
-// ==== DOM Refs ====
+// ==== DOM Refs (start screen controls are in index.html) ====
 const startBtn = document.getElementById("start-btn");
 const modeSelect = document.getElementById("mode-select");
 const keywordInput = document.getElementById("keyword-input");
 const genreSelect = document.getElementById("genre-select");
 
-// ==== Event Listeners on Start Screen ====
+// reflect UI -> state
 if (modeSelect) modeSelect.addEventListener("change", () => { modeFilter = modeSelect.value; });
 if (keywordInput) keywordInput.addEventListener("input", () => { keywordFilter = keywordInput.value.trim(); });
 if (genreSelect) genreSelect.addEventListener("change", () => { genreFilter = genreSelect.value; });
@@ -34,29 +37,26 @@ if (genreSelect) genreSelect.addEventListener("change", () => { genreFilter = ge
 // ==== Start Button ====
 startBtn.addEventListener("click", async () => {
   const usernameInput = document.getElementById("username").value.trim();
-  if (!usernameInput) { alert("ユーザー名を入力してください"); return; }
+  if (!usernameInput) {
+    alert("ユーザー名を入力してください");
+    return;
+  }
   currentUser = usernameInput;
 
-  // 既存成績のロード
+  // 既存成績のロード（ユーザー単位のノードにアクセス）
   try {
-    const res = await fetch(RESULT_URL);
+    const res = await fetch(userResultUrl(currentUser), { cache: "no-store" });
     const data = await res.json();
-    if (data && data[currentUser]) questionHistory = data[currentUser];
+    questionHistory = data || {};
   } catch (e) {
-    console.warn("結果ロードに失敗:", e);
+    console.error("結果の読み込みに失敗:", e);
+    questionHistory = {};
   }
 
   // 問題のロード
-  try {
-    const qRes = await fetch(DB_URL);
-    questions = await qRes.json();
-  } catch (e) {
-    alert("問題データの取得に失敗しました");
-    return;
-  }
-
-  // ID昇順を用意（IDはゼロパディング前提）
-  sortedIds = Object.keys(questions).sort();
+  const qRes = await fetch(DB_URL, { cache: "no-store" });
+  questions = await qRes.json();
+  sortedIds = Object.keys(questions).sort(); // "001","002"... を想定（文字列昇順）
 
   // 画面遷移
   document.getElementById("start-screen").classList.add("hidden");
@@ -79,45 +79,51 @@ function buildCandidates() {
     ids = ids.filter(id => (questions[id]?.question || "").toLowerCase().includes(kw));
   }
 
-  // Block1: 出題モード（単一選択）
+  // Block1: 出題モード（単一選択・トグル適用）
   if (modeFilter === "incorrect") {
-    ids = ids.filter(id => questionHistory[id]?.correct === false);
+    ids = ids.filter(id => questionHistory[id]?.last_correct === false);
+    ids.sort((a, b) => a.localeCompare(b));
   } else if (modeFilter === "conf_low") {
     ids = ids.filter(id => (questionHistory[id]?.confidence || "") === "低");
+    ids.sort((a, b) => a.localeCompare(b));
   } else if (modeFilter === "conf_mid") {
     ids = ids.filter(id => (questionHistory[id]?.confidence || "") === "中");
+    ids.sort((a, b) => a.localeCompare(b));
   } else if (modeFilter === "conf_high") {
     ids = ids.filter(id => (questionHistory[id]?.confidence || "") === "高");
-  } else if (modeFilter === "fewest") {
-    // 出題回数が少ない順、同回数はID昇順
-    ids.sort((a, b) => {
-      const ac = questionHistory[a]?.count || 0;
-      const bc = questionHistory[b]?.count || 0;
-      if (ac !== bc) return ac - bc;
-      return a.localeCompare(b);
-    });
+    ids.sort((a, b) => a.localeCompare(b));
   } else if (modeFilter === "all") {
     // すべて（ID順）
+    ids.sort((a, b) => a.localeCompare(b));
+  } else {
+    // fewest: 出題回数の少ない問題を優先（安定化版）
+    // まず候補の中の最小出題回数を求め、その最小回数のものだけを対象にする
+    let minCount = Infinity;
+    ids.forEach(id => {
+      const c = questionHistory[id]?.count || 0;
+      if (c < minCount) minCount = c;
+    });
+    ids = ids.filter(id => (questionHistory[id]?.count || 0) === minCount);
+    // 同回数グループは ID 昇順
     ids.sort((a, b) => a.localeCompare(b));
   }
 
   return ids;
 }
 
-// ==== Next Question Picker (非ランダム・ID順ベース) ====
+// ==== Next Question Picker (ID順ベース・非ランダム) ====
 function pickNextId(previousId = null) {
   const candidates = buildCandidates();
-  if (candidates.length === 0) return null;
 
-  // fewest/all では ID 昇順で進む。前問があるならその次へ
-  if (modeFilter === "fewest" || modeFilter === "all") {
-    if (!previousId) return candidates[0];
-    const idx = candidates.indexOf(previousId);
-    if (idx === -1 || idx === candidates.length - 1) return candidates[0];
-    return candidates[idx + 1];
+  if (candidates.length === 0) {
+    alert("対象の問題がありません。");
+    // 初期画面へ戻す
+    document.getElementById("quiz-screen").classList.add("hidden");
+    document.getElementById("start-screen").classList.remove("hidden");
+    return null;
   }
 
-  // incorrect/conf_* でも基本は ID 昇順で次へ
+  // ID順で進む。前問が存在する場合はその次へ、見つからなければ先頭。
   if (!previousId) return candidates[0];
   const idx = candidates.indexOf(previousId);
   if (idx === -1 || idx === candidates.length - 1) return candidates[0];
@@ -126,13 +132,7 @@ function pickNextId(previousId = null) {
 
 function showNextQuestion() {
   const nextId = pickNextId(currentQuestion?.id || null);
-  if (!nextId) {
-    alert("対象の問題がありません。");
-    // ← ここで初期画面へ戻す
-    document.getElementById("quiz-screen").classList.add("hidden");
-    document.getElementById("start-screen").classList.remove("hidden");
-    return;
-  }
+  if (!nextId) return; // すでに初期画面へ戻している
   currentQuestion = questions[nextId];
   displayQuestion();
 }
@@ -142,19 +142,16 @@ function displayQuestion() {
   const q = currentQuestion;
   document.getElementById("question-container").innerText = q.question;
 
-  // 選択肢コンテナ初期化
+  // Choices: c1〜c4。c1が「◯」のときのみ2択表示（c1,c2）／それ以外は毎回ランダム
   const container = document.getElementById("choices-container");
   container.innerHTML = "";
-
-  // c1 が "◯" のときは固定（c1, c2）、それ以外は毎回ランダムに c1〜c4 を並べ替える
-  let keys = [];
+  let keys = ["c1", "c2", "c3", "c4"];
   if (q.c1 === "◯") {
-    keys = ["c1", "c2"];
+    keys = ["c1", "c2"]; // 並び固定
   } else {
-    keys = shuffle(["c1", "c2", "c3", "c4"]);
+    keys = shuffle(keys); // 毎回ランダム
   }
 
-  // ボタン生成
   keys.forEach(key => {
     const btn = document.createElement("button");
     btn.className = "choice-button";
@@ -164,52 +161,93 @@ function displayQuestion() {
     container.appendChild(btn);
   });
 
-  // フィードバック・自信度エリア初期化
+  // 一旦非表示（回答後に表示）
   document.getElementById("feedback").classList.add("hidden");
   document.getElementById("confidence-container").classList.add("hidden");
 
-  // 既存メモ表示
+  // 既存メモをセット（表示自体は回答後）
   const memoInput = document.getElementById("memo");
   memoInput.value = questionHistory[q.id]?.memo || "";
 
-  // 自信度ボタンの復元（回答回数に応じた色）
-  const saved = questionHistory[q.id];
-  const savedConfidence = saved?.confidence;
-  const savedCount = saved?.count || 0;
+  // 自信度ボタンの色は、表示時に復元する（回答後に表示）
+  // コントロール群（成績/NEXT/EXIT）は回答後に作るためここでは生成しない
+}
 
-  document.querySelectorAll(".confidence").forEach(btn => {
-    btn.classList.remove("selected");
-    if (savedCount > 0 && btn.dataset.level === savedConfidence) {
-      btn.classList.add("selected");
+// ==== Answer Handler ====
+function handleAnswer(selectedKey, button) {
+  const isCorrect = selectedKey === currentQuestion.answer;
+
+  // 選択肢ボタンのロックと色分け
+  const buttons = document.querySelectorAll(".choice-button");
+  buttons.forEach(btn => btn.disabled = true);
+  buttons.forEach(btn => {
+    if (btn.dataset.key === currentQuestion.answer) {
+      btn.classList.add("correct");
+    } else if (btn === button && !isCorrect) {
+      btn.classList.add("incorrect");
     }
   });
 
-  // ボタン群を下部に生成（重複防止）
+  // フィードバック表示
+  const feedback = document.getElementById("feedback");
+  feedback.classList.remove("hidden");
+  feedback.innerText = isCorrect ? "正解！" : "不正解！";
+
+  // 成績の更新（count/正解数/不正解数/最後の正誤）
+  const id = currentQuestion.id;
+  if (!questionHistory[id]) questionHistory[id] = {};
+  const h = questionHistory[id];
+  h.count = (h.count || 0) + 1;
+  if (isCorrect) {
+    h.correct_count = (h.correct_count || 0) + 1;
+  } else {
+    h.incorrect_count = (h.incorrect_count || 0) + 1;
+  }
+  h.last_correct = isCorrect;
+
+  // 自信度とメモ UI を表示
+  const ci = document.getElementById("confidence-container");
+  ci.classList.remove("hidden");
+
+  // 以前の自信度を色復元（ただし NEXT は初期は無効 → クリックで有効）
+  const savedConfidence = h.confidence;
+  const savedCount = h.count || 0;
+
+  document.querySelectorAll(".confidence").forEach(b => {
+    b.classList.remove("selected");
+    if (savedCount > 0 && b.dataset.level === savedConfidence) {
+      b.classList.add("selected");
+    }
+  });
+
+  // 既存のボタン群があれば除去し、再生成
   const existingControl = document.getElementById("control-buttons");
   if (existingControl) existingControl.remove();
   const controlContainer = document.createElement("div");
   controlContainer.id = "control-buttons";
 
+  // 成績ボタン
   const scoreBtn = document.createElement("button");
   scoreBtn.id = "score-btn";
   scoreBtn.textContent = "成績";
   scoreBtn.onclick = () => showScore();
   controlContainer.appendChild(scoreBtn);
 
+  // NEXTボタン（初期は必ず無効化し、どれかの自信度を押したら有効化）
   const nextBtn = document.createElement("button");
   nextBtn.id = "next-btn";
   nextBtn.textContent = "Next";
-  // 初期は、過去回答があって自信度が保存されている場合のみ有効
-  nextBtn.disabled = !(savedConfidence && savedCount > 0);
+  nextBtn.disabled = true; // ← クリックするまで無効
   nextBtn.onclick = () => {
-    // メモ保存
-    if (!questionHistory[q.id]) questionHistory[q.id] = {};
-    questionHistory[q.id].memo = memoInput.value;
+    // メモ保存して次へ
+    const memoInput = document.getElementById("memo");
+    h.memo = memoInput.value || "";
     saveResult();
     showNextQuestion();
   };
   controlContainer.appendChild(nextBtn);
 
+  // EXITボタン
   const exitBtn = document.createElement("button");
   exitBtn.id = "exit-btn";
   exitBtn.textContent = "Exit";
@@ -219,63 +257,41 @@ function displayQuestion() {
   };
   controlContainer.appendChild(exitBtn);
 
-  document.getElementById("confidence-container").appendChild(controlContainer);
-}
+  ci.appendChild(controlContainer);
 
-// ==== Answer Handler ====
-function handleAnswer(selectedKey, button) {
-  const isCorrect = selectedKey === currentQuestion.answer;
-  const buttons = document.querySelectorAll(".choice-button");
-  buttons.forEach(btn => btn.disabled = true);
-
-  buttons.forEach(btn => {
-    if (btn.dataset.key === currentQuestion.answer) {
-      btn.classList.add("correct");
-    } else if (btn === button && !isCorrect) {
-      btn.classList.add("incorrect");
-    }
-  });
-
-  document.getElementById("feedback").classList.remove("hidden");
-  document.getElementById("feedback").innerText = isCorrect ? "正解！" : "不正解！";
-  document.getElementById("confidence-container").classList.remove("hidden");
-
-  // 履歴更新
-  if (!questionHistory[currentQuestion.id]) questionHistory[currentQuestion.id] = {};
-  questionHistory[currentQuestion.id].correct = isCorrect;
-  questionHistory[currentQuestion.id].count = (questionHistory[currentQuestion.id].count || 0) + 1;
-
-  // 自信度の選択 → NEXT有効化
+  // 自信度ボタンのハンドラ（選択したら保存＆NEXT有効化＆色反映）
   document.querySelectorAll(".confidence").forEach(btn => {
     btn.onclick = () => {
-      questionHistory[currentQuestion.id].confidence = btn.dataset.level;
+      h.confidence = btn.dataset.level;
       document.querySelectorAll(".confidence").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
-      const nb = document.getElementById("next-btn");
-      if (nb) nb.disabled = false;
+      document.getElementById("next-btn").disabled = false;
     };
   });
 }
 
-// ==== Save to Firebase ====
+// ==== Save to Firebase (per user node) ====
 function saveResult() {
-  fetch(RESULT_URL, {
+  fetch(userResultUrl(currentUser), {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ [currentUser]: questionHistory }),
-  });
+    mode: "cors",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify(questionHistory),
+    cache: "no-store",
+  }).catch(err => console.error("保存に失敗:", err));
 }
 
-// ==== Utility: Strong Shuffle ====
+// ==== Shuffle (毎回違うランダム) ====
 function shuffle(array) {
-  const arr = array.slice();
-  for (let i = arr.length - 1; i > 0; i--) {
-    // cryptoベースの乱数（ブラウザ対応前提）
-    const r = crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
-    const j = Math.floor(r * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+  const a = array.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    // crypto ベースで偏りを減らす
+    const r = new Uint32Array(1);
+    crypto.getRandomValues(r);
+    const j = r[0] % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
   }
-  return arr;
+  return a;
 }
 
 // ==== Score Screen ====
@@ -286,7 +302,7 @@ function showScore() {
 
   const table = document.createElement("table");
   const header = document.createElement("tr");
-  ["ID", "問題", "出題回数", "正解数", "自信度", "メモ"].forEach(text => {
+  ["ID","問題","出題回数","正解数","自信度","メモ"].forEach(text => {
     const th = document.createElement("th");
     th.innerText = text;
     header.appendChild(th);
@@ -300,8 +316,16 @@ function showScore() {
     if (!q || !h) return;
 
     const tr = document.createElement("tr");
-    const correctCount = h.correct ? 1 : 0; // 必要なら累積に拡張可能
-    [id, q.question, h.count || 0, correctCount, h.confidence || "", h.memo || ""].forEach(val => {
+    const correctCount = h.correct_count || 0;
+    const row = [
+      id,
+      q.question,
+      h.count || 0,
+      correctCount,
+      h.confidence || "",
+      h.memo || ""
+    ];
+    row.forEach(val => {
       const td = document.createElement("td");
       td.innerText = val;
       tr.appendChild(td);
